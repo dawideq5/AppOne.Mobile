@@ -3,12 +3,13 @@
     x:Class="datawedge_MAUI_SampleApp.AppShell"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-    xmlns:local="clr-namespace:datawedge_MAUI_SampleApp"
-    Shell.FlyoutBehavior="Disabled">
+    xmlns:local="clr-namespace:datawedge_MAUI_SampleApp.Views"
+    Shell.FlyoutBehavior="Disabled"
+    Title="AppOne Scanner (Zebra Base)">
 
     <ShellContent
-        Title="Home"
-        ContentTemplate="{DataTemplate local:MainPage}"
-        Route="MainPage" />
+        Title="Logowanie"
+        ContentTemplate="{DataTemplate local:LoginView}"
+        Route="LoginView" />
 
 </Shell>
