@@ -1,43 +1,37 @@
-// Typ pliku: Plik C# (code-behind)
 // Lokalizacja: datawedge_MAUI_SampleApp/Views/ScannerView.xaml.cs
 using datawedge_MAUI_SampleApp.ViewModels;
-// POPRAWKA: Upewnij siê, ¿e ta przestrzeñ nazw jest poprawna i zawiera BarcodeScannedMessage
-using datawedge_MAUI_SampleApp.Messaging;
-using CommunityToolkit.Mvvm.Messaging;
+// Usuniêto using datawedge_MAUI_SampleApp.Messaging i CommunityToolkit.Mvvm.Messaging,
+// poniewa¿ ViewModel obs³uguje teraz odbieranie wiadomoœci.
 
-namespace datawedge_MAUI_SampleApp.Views;
-
-public partial class ScannerView : ContentPage, IRecipient<BarcodeScannedMessage> // Upewnij siê, ¿e BarcodeScannedMessage jest rozpoznawalne
+namespace datawedge_MAUI_SampleApp.Views
 {
-    private readonly ScannerViewModel _viewModel;
-
-    public ScannerView(ScannerViewModel viewModel)
+    public partial class ScannerView : ContentPage
     {
-        InitializeComponent();
-        _viewModel = viewModel;
-        BindingContext = _viewModel;
-    }
+        // ViewModel jest ju¿ wstrzykiwany przez DI i ustawiany w konstruktorze
+        // private readonly ScannerViewModel _viewModel; 
 
-    protected override void OnAppearing()
-    {
-        base.OnAppearing();
-        WeakReferenceMessenger.Default.Register(this);
-    }
-
-    protected override void OnDisappearing()
-    {
-        base.OnDisappearing();
-        WeakReferenceMessenger.Default.UnregisterAll(this);
-    }
-
-    public void Receive(BarcodeScannedMessage message) // Upewnij siê, ¿e BarcodeScannedMessage jest rozpoznawalne
-    {
-        MainThread.BeginInvokeOnMainThread(async () =>
+        public ScannerView(ScannerViewModel viewModel)
         {
-            if (_viewModel.ProcessScannedCodeCommand.CanExecute(message.Value))
+            InitializeComponent();
+            // _viewModel = viewModel; // Niepotrzebne, jeœli BindingContext jest ustawiony
+            BindingContext = viewModel;
+        }
+
+        protected override void OnAppearing()
+        {
+            base.OnAppearing();
+            // ViewModel jest ju¿ zarejestrowany na wiadomoœci w swoim konstruktorze.
+            // Jeœli potrzebujesz specyficznej logiki UI przy pojawianiu siê, dodaj j¹ tutaj.
+        }
+
+        protected override void OnDisappearing()
+        {
+            base.OnDisappearing();
+            // Wywo³aj metodê Cleanup ViewModelu, aby siê wyrejestrowa³ z wiadomoœci
+            if (BindingContext is ScannerViewModel vm)
             {
-                await _viewModel.ProcessScannedCodeCommand.ExecuteAsync(message.Value);
+                vm.Cleanup();
             }
-        });
+        }
     }
 }

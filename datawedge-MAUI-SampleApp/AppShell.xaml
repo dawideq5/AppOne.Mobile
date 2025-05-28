@@ -3,13 +3,27 @@
     x:Class="datawedge_MAUI_SampleApp.AppShell"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-    xmlns:local="clr-namespace:datawedge_MAUI_SampleApp.Views"
+    xmlns:views="clr-namespace:datawedge_MAUI_SampleApp.Views"
     Shell.FlyoutBehavior="Disabled"
-    Title="AppOne Scanner (Zebra Base)">
+    Title="AppOne Scanner">
 
     <ShellContent
         Title="Logowanie"
-        ContentTemplate="{DataTemplate local:LoginView}"
+        ContentTemplate="{DataTemplate views:LoginView}"
         Route="LoginView" />
+
+    <TabBar x:Name="MainAppTabBar" Route="MainAppTabs">
+        <ShellContent
+            Title="Panel Główny"
+            Icon="dashboard_icon.png" ContentTemplate="{DataTemplate views:DashboardView}"
+            Route="DashboardView" />
+        <!-- 
+        <ShellContent
+            Title="Skaner"
+            Icon="scanner_icon.png"
+            ContentTemplate="{DataTemplate views:ScannerView}"
+            Route="ScannerViewTab" /> 
+        -->
+    </TabBar>
 
 </Shell>

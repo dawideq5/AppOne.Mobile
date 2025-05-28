@@ -1,12 +1,9 @@
-﻿// Typ pliku: Plik C# (.cs)
-// Lokalizacja: datawedge-MAUI-SampleApp/MauiProgram.cs
-
-using Microsoft.Extensions.Logging; // POPRAWKA: Dodano dla AddDebug()
-using datawedge_MAUI_SampleApp.Services; // Upewnij się, że ta przestrzeń nazw istnieje i zawiera IApiClient, MockApiClient
+﻿// Lokalizacja: datawedge_MAUI_SampleApp/MauiProgram.cs
+using Microsoft.Extensions.Logging;
+using datawedge_MAUI_SampleApp.Services;
 using datawedge_MAUI_SampleApp.ViewModels;
 using datawedge_MAUI_SampleApp.Views;
-using Microsoft.Maui.Hosting;
-using Microsoft.Maui.Controls.Hosting;
+using CommunityToolkit.Maui; // Dla UseMauiCommunityToolkit
 
 namespace datawedge_MAUI_SampleApp
 {
@@ -17,6 +14,7 @@ namespace datawedge_MAUI_SampleApp
             var builder = MauiApp.CreateBuilder();
             builder
                 .UseMauiApp<App>()
+                .UseMauiCommunityToolkit() // Inicjalizacja Community Toolkit
                 .ConfigureFonts(fonts =>
                 {
                     fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
@@ -24,23 +22,25 @@ namespace datawedge_MAUI_SampleApp
                 });
 
 #if DEBUG
-            // POPRAWKA: Metoda AddDebug() jest metodą rozszerzenia dla ILoggingBuilder
             builder.Logging.AddDebug();
 #endif
 
-            // Rejestracja Twoich usług i API
-            // Upewnij się, że IApiClient i MockApiClient są w przestrzeni nazw datawedge_MAUI_SampleApp.Services
-            builder.Services.AddSingleton<IApiClient, MockApiClient>();
+            // Rejestracja usług
+            builder.Services.AddSingleton<IApiClient, MockApiClient>(); // Używamy MockApiClient
+            builder.Services.AddSingleton<IDataWedgeService, DataWedgeService>();
 
-            // Rejestracja Twoich ViewModeli
-            builder.Services.AddSingleton<LoginViewModel>();
-            builder.Services.AddSingleton<DashboardViewModel>();
-            builder.Services.AddSingleton<ScannerViewModel>();
 
-            // Rejestracja Twoich Widoków (stron)
-            builder.Services.AddSingleton<LoginView>();
-            builder.Services.AddSingleton<DashboardView>();
-            builder.Services.AddSingleton<ScannerView>();
+            // Rejestracja ViewModeli
+            // Użyj AddTransient, jeśli ViewModel ma krótki cykl życia i nie przechowuje stanu między stronami,
+            // lub AddSingleton, jeśli ma przechowywać stan lub być współdzielony.
+            builder.Services.AddTransient<LoginViewModel>();
+            builder.Services.AddTransient<DashboardViewModel>();
+            builder.Services.AddTransient<ScannerViewModel>();
+
+            // Rejestracja Widoków (stron)
+            builder.Services.AddTransient<LoginView>();
+            builder.Services.AddTransient<DashboardView>();
+            builder.Services.AddTransient<ScannerView>();
 
             // Rejestracja głównej powłoki aplikacji
             builder.Services.AddSingleton<AppShell>();
