@@ -1,11 +1,12 @@
-﻿// Lokalizacja: datawedge_MAUI_SampleApp/Models/PlaceholderModel.cs
-#nullable enable
-
-namespace datawedge_MAUI_SampleApp.Models
+﻿// Models/PlaceholderModel.cs
+namespace AppOne.Mobile.Models
 {
+    // Ten model jest przykładowy, możesz go usunąć, jeśli nie jest potrzebny.
+    // Został znaleziony w dostarczonych plikach.
     public class PlaceholderModel
     {
-        // Poprawka dla CS8618: Inicjalizacja właściwości, aby nie była null
-        public string Name { get; set; } = string.Empty;
+        public int Id { get; set; }
+        public string? Name { get; set; }
+        public string? Description { get; set; }
     }
 }

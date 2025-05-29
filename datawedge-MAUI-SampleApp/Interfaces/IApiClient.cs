@@ -1,17 +1,14 @@
-﻿// Plik: datawedge-MAUI-SampleApp/Interfaces/IApiClient.cs
-namespace datawedge_MAUI_SampleApp.Interfaces
+﻿// Interfaces/IApiClient.cs
+using AppOne.Mobile.Models; // Upewnij się, że ValidationResponse jest tutaj
+using datawedge_MAUI_SampleApp.Models;
+using System.Threading.Tasks;
+
+namespace AppOne.Mobile.Interfaces
 {
-    /// <summary>
-    /// Interfejs dla klienta API do wysyłania danych.
-    /// </summary>
     public interface IApiClient
     {
-        /// <summary>
-        /// Wysyła kod kreskowy do API.
-        /// </summary>
-        /// <param name="barcode">Skanowany kod kreskowy.</param>
-        /// <returns>Odpowiedź z API.</returns>
-        Task<string> SendBarcodeAsync(string barcode);
-        // Tutaj można dodać inne metody API w przyszłości.
+        Task<ValidationResponse> ValidateCodeAsync(string code);
+        // Dodaj inne metody API, jeśli są potrzebne
+        // Przykład: Task<User> GetUserAsync(string userId);
     }
 }

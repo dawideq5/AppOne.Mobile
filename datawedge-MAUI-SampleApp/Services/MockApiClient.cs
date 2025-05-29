@@ -1,39 +1,39 @@
-﻿// Lokalizacja: datawedge_MAUI_SampleApp/Services/MockApiClient.cs
+﻿// Services/MockApiClient.cs
+using AppOne.Mobile.Interfaces;
+using AppOne.Mobile.Models;
 using datawedge_MAUI_SampleApp.Models;
+using System;
 using System.Threading.Tasks;
-using System.Diagnostics;
 
-namespace datawedge_MAUI_SampleApp.Services
+namespace AppOne.Mobile.Services
 {
     public class MockApiClient : IApiClient
     {
-        public async Task<ValidationResponse> ValidateTicketAsync(string ticketCode)
+        public async Task<ValidationResponse> ValidateCodeAsync(string code)
         {
-            Debug.WriteLine($"MockApiClient: Validating ticket '{ticketCode}'");
             // Symulacja opóźnienia sieciowego
-            await Task.Delay(1000);
+            await Task.Delay(TimeSpan.FromMilliseconds(300));
 
-            if (string.IsNullOrWhiteSpace(ticketCode))
+            if (string.IsNullOrWhiteSpace(code))
             {
-                Debug.WriteLine("MockApiClient: Ticket code is empty.");
-                return new ValidationResponse { IsSuccess = false, Message = "Pusty kod biletu." };
+                return new ValidationResponse { IsValid = false, Message = "Kod nie może być pusty." };
             }
 
-            if (ticketCode.ToUpper().Contains("VALID"))
+            if (code.StartsWith("INVALID", StringComparison.OrdinalIgnoreCase))
             {
-                Debug.WriteLine($"MockApiClient: Ticket '{ticketCode}' is VALID.");
-                return new ValidationResponse { IsSuccess = true, Message = $"Bilet '{ticketCode}' jest poprawny." };
+                return new ValidationResponse { IsValid = false, Message = "Kod nieprawidłowy (mock)." };
             }
-            else if (ticketCode.ToUpper().Contains("ERROR"))
+
+            if (code.StartsWith("ERROR", StringComparison.OrdinalIgnoreCase))
             {
-                Debug.WriteLine($"MockApiClient: Simulating error for ticket '{ticketCode}'.");
-                throw new System.Net.Http.HttpRequestException("Symulowany błąd połączenia z serwerem.");
+                // Symulacja błędu serwera lub wyjątku
+                return new ValidationResponse { IsValid = false, Message = "Wystąpił błąd serwera (mock)." };
             }
-            else
-            {
-                Debug.WriteLine($"MockApiClient: Ticket '{ticketCode}' is INVALID.");
-                return new ValidationResponse { IsSuccess = false, Message = $"Bilet '{ticketCode}' jest niepoprawny." };
-            }
+
+            // Domyślnie kod jest prawidłowy
+            return new ValidationResponse { IsValid = true, Message = "Kod prawidłowy (mock)." };
         }
+
+        // Implementuj inne metody interfejsu IApiClient, jeśli istnieją
     }
 }

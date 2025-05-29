@@ -1,62 +1,84 @@
-﻿// Lokalizacja: datawedge_MAUI_SampleApp/ViewModels/LoginViewModel.cs
+﻿// ViewModels/LoginViewModel.cs
+using AppOne.Mobile.Interfaces;
+using AppOne.Mobile.Views; // Dla nameof(DashboardView)
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using datawedge_MAUI_SampleApp.Views;
+using Microsoft.Maui.Controls;
 using System.Threading.Tasks;
-using datawedge_MAUI_SampleApp.Views; // Dla nameof(DashboardView)
-using System.Diagnostics;
 
-namespace datawedge_MAUI_SampleApp.ViewModels
+namespace AppOne.Mobile.ViewModels
 {
-    public partial class LoginViewModel : ObservableObject
+    public partial class LoginViewModel : BaseViewModel
     {
-        [ObservableProperty]
-        private string _username = string.Empty;
+        private readonly IAuthenticationService _authenticationService;
+        private readonly IApiClient _apiClient; // Dodajemy IApiClient, jeśli walidacja jest tu
 
         [ObservableProperty]
-        private string _password = string.Empty;
+        string username = string.Empty;
 
-        private string _errorMessage = string.Empty;
-        public string ErrorMessage
+        [ObservableProperty]
+        string password = string.Empty;
+
+        public LoginViewModel(IAuthenticationService authenticationService, IApiClient apiClient)
         {
-            get => _errorMessage;
-            set => SetProperty(ref _errorMessage, value);
+            _authenticationService = authenticationService;
+            _apiClient = apiClient; // Przypisz IApiClient
+            Title = "Logowanie";
+            LoadLastUserCommand = new AsyncRelayCommand(LoadLastUserAsync);
         }
 
-        [ObservableProperty]
-        private bool _isError = false;
+        public IAsyncRelayCommand LoadLastUserCommand { get; }
 
-        public LoginViewModel()
+        private async Task LoadLastUserAsync()
         {
-            Debug.WriteLine("LoginViewModel initialized.");
+            Username = await _authenticationService.GetLastLoggedInUserAsync() ?? string.Empty;
         }
 
         [RelayCommand]
-        private async Task Login()
+        async Task Login()
         {
-            if (string.IsNullOrWhiteSpace(Username) || string.IsNullOrWhiteSpace(Password))
-            {
-                ErrorMessage = "Nazwa użytkownika i hasło są wymagane.";
-                IsError = true;
-                Debug.WriteLine("Login attempt with empty fields.");
+            if (IsBusy)
                 return;
-            }
 
-            if (Username.Trim().ToLower() == "admin" && Password.Trim() == "admin")
+            IsBusy = true;
+            try
             {
-                IsError = false;
-                ErrorMessage = string.Empty;
-                Debug.WriteLine("Admin login successful. Navigating to DashboardView with absolute route.");
+                if (string.IsNullOrWhiteSpace(Username) || string.IsNullOrWhiteSpace(Password))
+                {
+                    await Shell.Current.DisplayAlert("Błąd logowania", "Nazwa użytkownika i hasło nie mogą być puste.", "OK");
+                    return;
+                }
 
-                // POPRAWKA: Użycie nawigacji absolutnej, aby DashboardView stał się nowym korzeniem stosu nawigacji.
-                // To powinno wyczyścić poprzedni stos (z LoginView).
-                await Shell.Current.GoToAsync($"//{nameof(DashboardView)}");
+                // Użyj AuthenticationService do logowania
+                bool success = await _authenticationService.LoginAsync(Username, Password);
+
+                if (success)
+                {
+                    // Nawigacja do DashboardView
+                    await Shell.Current.GoToAsync($"//{nameof(DashboardView)}");
+                }
+                else
+                {
+                    await Shell.Current.DisplayAlert("Błąd logowania", "Nieprawidłowa nazwa użytkownika lub hasło.", "OK");
+                }
             }
-            else
+            catch (System.Exception ex)
             {
-                ErrorMessage = "Nieprawidłowy login lub hasło.";
-                IsError = true;
-                Debug.WriteLine($"Login failed for user: {Username}");
+                await Shell.Current.DisplayAlert("Błąd", $"Wystąpił błąd podczas logowania: {ex.Message}", "OK");
+                System.Diagnostics.Debug.WriteLine($"Login failed: {ex}");
             }
+            finally
+            {
+                IsBusy = false;
+            }
+        }
+
+        public async Task OnAppearing()
+        {
+            await LoadLastUserAsync();
+            // Resetuj hasło przy każdym pojawieniu się widoku
+            Password = string.Empty;
         }
     }
 }

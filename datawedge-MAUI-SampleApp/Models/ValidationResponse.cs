@@ -1,9 +1,9 @@
-﻿// Lokalizacja: datawedge_MAUI_SampleApp/Models/ValidationResponse.cs
-namespace datawedge_MAUI_SampleApp.Models
+﻿// Models/ValidationResponse.cs
+namespace AppOne.Mobile.Models
 {
     public class ValidationResponse
     {
-        public bool IsSuccess { get; set; }
-        public string Message { get; set; } = string.Empty;
+        public bool IsValid { get; set; }
+        public string? Message { get; set; } // Może być null
     }
 }

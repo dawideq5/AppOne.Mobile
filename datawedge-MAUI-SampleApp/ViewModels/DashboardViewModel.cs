@@ -1,34 +1,72 @@
-﻿// Lokalizacja: datawedge_MAUI_SampleApp/ViewModels/DashboardViewModel.cs
+﻿// ViewModels/DashboardViewModel.cs
+using AppOne.Mobile.Interfaces; // Dla IAuthenticationService
+using AppOne.Mobile.Views;    // Dla nameof(ScannerView), nameof(LoginView)
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using System.Threading.Tasks;
-using datawedge_MAUI_SampleApp.Views; // Dla nameof(ScannerView) i nameof(LoginView)
+using datawedge_MAUI_SampleApp.Views;
+using Microsoft.Maui.Controls; // Dla Shell
+using System; // Dla EventArgs
+using System.Threading.Tasks; // Dla Task
 
-namespace datawedge_MAUI_SampleApp.ViewModels
+namespace AppOne.Mobile.ViewModels
 {
-    public partial class DashboardViewModel : ObservableObject
+    public partial class DashboardViewModel : BaseViewModel
     {
-        public DashboardViewModel()
+        private readonly IAuthenticationService _authenticationService;
+
+        [ObservableProperty]
+        string welcomeMessage = string.Empty;
+
+        public DashboardViewModel(IAuthenticationService authenticationService)
         {
-            // Inicjalizacja, jeśli potrzebna
+            _authenticationService = authenticationService;
+            Title = "Panel Główny";
+            UpdateWelcomeMessage();
+            _authenticationService.AuthenticationStateChanged += OnAuthenticationStateChanged;
+        }
+
+        private void OnAuthenticationStateChanged(object? sender, EventArgs e)
+        {
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                UpdateWelcomeMessage();
+                if (!_authenticationService.IsLoggedIn && Shell.Current.CurrentPage is DashboardView)
+                {
+                    // Jeśli użytkownik jest na dashboardzie i został wylogowany, przekieruj
+                    Shell.Current.GoToAsync($"//{nameof(LoginView)}");
+                }
+            });
+        }
+
+        private void UpdateWelcomeMessage()
+        {
+            if (_authenticationService.IsLoggedIn)
+            {
+                WelcomeMessage = $"Witaj, {_authenticationService.UserName}!";
+            }
+            else
+            {
+                WelcomeMessage = "Witaj! Zaloguj się, aby kontynuować.";
+            }
         }
 
         [RelayCommand]
-        private async Task GoToScanner()
+        async Task GoToScanner()
         {
             // Nawigacja do strony skanera
             await Shell.Current.GoToAsync(nameof(ScannerView));
         }
 
         [RelayCommand]
-        private async Task Logout()
+        async Task Logout()
         {
-            // Logika wylogowania (np. czyszczenie tokenów, stanu użytkownika)
-            // ...
-
-            // Nawigacja z powrotem do strony logowania
-            // Użycie "//" resetuje stos nawigacji
+            _authenticationService.Logout();
             await Shell.Current.GoToAsync($"//{nameof(LoginView)}");
+        }
+
+        public void OnAppearing()
+        {
+            UpdateWelcomeMessage(); // Upewnij się, że wiadomość jest aktualna przy wejściu
         }
     }
 }

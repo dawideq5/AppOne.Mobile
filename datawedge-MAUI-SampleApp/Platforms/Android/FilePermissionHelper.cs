@@ -1,25 +1,26 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace datawedge_MAUI_SampleApp.Platforms.Android
+﻿// Platforms/Android/FilePermissionHelper.cs
+// Ten plik wydaje się być specyficzny dla Twojego projektu,
+// jeśli nie jest używany, można go pominąć.
+// Upewnij się, że przestrzeń nazw jest poprawna.
+namespace AppOne.Mobile.Platforms.Android // Zmieniono namespace
 {
-    public class FilePermissionHelper
+    public static class FilePermissionHelper
     {
-        public static Boolean setFilePermissions(String filePath, Boolean readable, Boolean writable, Boolean executable)
+        public static async Task<PermissionStatus> CheckAndRequestStoragePermission()
         {
-            Java.IO.File file = new Java.IO.File(filePath);
-            Boolean success = true;
-            if (file.Exists())
+            PermissionStatus status = await Permissions.CheckStatusAsync<Permissions.StorageWrite>();
+
+            if (status == PermissionStatus.Granted)
+                return status;
+
+            if (Permissions.ShouldShowRationale<Permissions.StorageWrite>())
             {
-                if (!file.SetReadable(readable, false)) success = false;
-                if (!file.SetWritable(writable, false)) success = false;
-                if (!file.SetExecutable(executable, false)) success = false;
+                // Możesz pokazać użytkownikowi wyjaśnienie, dlaczego potrzebujesz tego uprawnienia
+                // await Shell.Current.DisplayAlert("Uprawnienia", "Potrzebujemy dostępu do pamięci, aby zapisać pliki.", "OK");
             }
-            else success = false;
-            return success;
+
+            status = await Permissions.RequestAsync<Permissions.StorageWrite>();
+            return status;
         }
     }
 }

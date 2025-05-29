@@ -1,30 +1,31 @@
-﻿// Lokalizacja: datawedge_MAUI_SampleApp/Converters/BoolToStringConverter.cs
-#nullable enable
+﻿// Converters/BoolToStringConverter.cs
 using System;
 using System.Globalization;
 using Microsoft.Maui.Controls;
 
-namespace datawedge_MAUI_SampleApp.Converters
+namespace AppOne.Mobile.Converters
 {
     public class BoolToStringConverter : IValueConverter
     {
+        public string TrueString { get; set; } = "Tak"; // Domyślna wartość
+        public string FalseString { get; set; } = "Nie"; // Domyślna wartość
+
         public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
-            if (value is bool boolValue && parameter is string stringParameter)
+            if (value is bool boolValue)
             {
-                var parameters = stringParameter.Split('|');
-                if (parameters.Length == 2)
-                {
-                    return boolValue ? parameters[1] : parameters[0]; // Zwraca drugi parametr dla true, pierwszy dla false
-                }
+                return boolValue ? TrueString : FalseString;
             }
-            return string.Empty; // Domyślna wartość, jeśli coś pójdzie nie tak
+            return FalseString; // Lub rzuć wyjątek, lub zwróć Binding.DoNothing
         }
 
         public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
-            // Konwersja wsteczna zazwyczaj nie jest potrzebna dla tego typu konwertera
-            throw new NotImplementedException();
+            if (value is string stringValue)
+            {
+                return string.Equals(stringValue, TrueString, StringComparison.OrdinalIgnoreCase);
+            }
+            return false; // Lub rzuć wyjątek
         }
     }
 }

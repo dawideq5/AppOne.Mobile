@@ -1,11 +1,13 @@
-﻿// Lokalizacja: datawedge_MAUI_SampleApp/MauiProgram.cs
-using Microsoft.Extensions.Logging;
-using datawedge_MAUI_SampleApp.Services;
-using datawedge_MAUI_SampleApp.ViewModels;
-using datawedge_MAUI_SampleApp.Views;
-using CommunityToolkit.Maui; // Dla UseMauiCommunityToolkit
+﻿// MauiProgram.cs
+using AppOne.Mobile.Interfaces;
+using AppOne.Mobile.Services;
+using AppOne.Mobile.ViewModels;
+using AppOne.Mobile.Views;
+using CommunityToolkit.Maui;
+using Microsoft.Extensions.Logging; // Dla AddDebug
+using Plugin.Maui.Audio;
 
-namespace datawedge_MAUI_SampleApp
+namespace AppOne.Mobile
 {
     public static class MauiProgram
     {
@@ -14,36 +16,40 @@ namespace datawedge_MAUI_SampleApp
             var builder = MauiApp.CreateBuilder();
             builder
                 .UseMauiApp<App>()
-                .UseMauiCommunityToolkit() // Inicjalizacja Community Toolkit
+                .UseMauiCommunityToolkit()
                 .ConfigureFonts(fonts =>
                 {
                     fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
                     fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
                 });
 
-#if DEBUG
-            builder.Logging.AddDebug();
-#endif
-
-            // Rejestracja usług
-            builder.Services.AddSingleton<IApiClient, MockApiClient>(); // Używamy MockApiClient
+            // Rejestracja serwisów
+            builder.Services.AddSingleton<IAuthenticationService, AuthenticationService>();
             builder.Services.AddSingleton<IDataWedgeService, DataWedgeService>();
-
+            // Wybierz ApiClient lub MockApiClient
+            builder.Services.AddSingleton<IApiClient, ApiClient>(); // Rzeczywiste API
+            // builder.Services.AddSingleton<IApiClient, MockApiClient>(); // Mock API do testów
+            builder.Services.AddSingleton<INotificationService, NotificationService>();
+            builder.Services.AddSingleton(AudioManager.Current);
 
             // Rejestracja ViewModeli
-            // Użyj AddTransient, jeśli ViewModel ma krótki cykl życia i nie przechowuje stanu między stronami,
-            // lub AddSingleton, jeśli ma przechowywać stan lub być współdzielony.
             builder.Services.AddTransient<LoginViewModel>();
             builder.Services.AddTransient<DashboardViewModel>();
             builder.Services.AddTransient<ScannerViewModel>();
+            builder.Services.AddSingleton<AppShellViewModel>();
 
-            // Rejestracja Widoków (stron)
+            // Rejestracja Widoków (Stron)
             builder.Services.AddTransient<LoginView>();
             builder.Services.AddTransient<DashboardView>();
             builder.Services.AddTransient<ScannerView>();
 
-            // Rejestracja głównej powłoki aplikacji
+            // Rejestracja App i AppShell
             builder.Services.AddSingleton<AppShell>();
+            builder.Services.AddSingleton<App>(); // Dodaj rejestrację App
+
+#if DEBUG
+            builder.Logging.AddDebug();
+#endif
 
             return builder.Build();
         }

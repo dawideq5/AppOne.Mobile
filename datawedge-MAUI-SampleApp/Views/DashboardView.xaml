@@ -1,30 +1,29 @@
-<?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             x:Class="datawedge_MAUI_SampleApp.Views.DashboardView"
-             Title="Panel Główny">
+             xmlns:viewmodels="clr-namespace:AppOne.Mobile.ViewModels"
+             x:Class="AppOne.Mobile.Views.DashboardView"
+             x:DataType="viewmodels:DashboardViewModel"
+             Title="{Binding Title}">
     <ScrollView>
         <VerticalStackLayout Spacing="20" Padding="20">
-            <Label Text="Wybierz Akcję:"
+            <Label Text="{Binding WelcomeMessage}"
                    FontSize="Large"
-                   HorizontalOptions="Center" />
+                   HorizontalOptions="Center"
+                   VerticalOptions="CenterAndExpand" />
 
-            <Frame Padding="0" CornerRadius="10" BorderColor="LightGray" HasShadow="True">
-                <Grid ColumnDefinitions="Auto,*" 
-                      Padding="15" 
-                      ColumnSpacing="15"
-                      BackgroundColor="{AppThemeBinding Light={StaticResource White}, Dark={StaticResource Gray900}}">
-                    <Grid.GestureRecognizers>
-                        <TapGestureRecognizer Command="{Binding GoToScannerCommand}" />
-                    </Grid.GestureRecognizers>
-                    <Image Source="scanner_icon.png" HeightRequest="50" WidthRequest="50" Aspect="AspectFit" VerticalOptions="Center"/>
-                    <Label Grid.Column="1" 
-                           Text="Skanowanie Biletów" 
-                           FontSize="Medium" 
-                           VerticalOptions="Center"/>
-                </Grid>
-            </Frame>
+            <Button Text="Przejdź do Skanera Biletów"
+                    Command="{Binding GoToScannerCommand}"
+                    HorizontalOptions="Fill" 
+                    Margin="0,20,0,0"/>
 
+            <!-- Jeśli chcesz go tutaj dodatkowo, możesz odkomentować:
+            <Button Text="Wyloguj"
+                    Command="{Binding LogoutCommand}"
+                    HorizontalOptions="Fill"
+                    BackgroundColor="DarkRed"
+                    TextColor="White"
+                    Margin="0,10,0,0"/>
+            -->
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

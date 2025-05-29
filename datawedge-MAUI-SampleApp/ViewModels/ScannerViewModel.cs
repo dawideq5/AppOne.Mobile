@@ -1,170 +1,147 @@
-﻿// Lokalizacja: datawedge_MAUI_SampleApp/ViewModels/ScannerViewModel.cs
-#nullable enable
+﻿// ViewModels/ScannerViewModel.cs
+using AppOne.Mobile.Interfaces;
+using AppOne.Mobile.Messaging;
+using AppOne.Mobile.Models;
+using AppOne.Mobile.Views; // Dla nameof(LoginView)
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
-using datawedge_MAUI_SampleApp.Services;
-using datawedge_MAUI_SampleApp.Models;
-using datawedge_MAUI_SampleApp.Messaging;
-using Microsoft.Maui.Graphics;
-using System.Collections.ObjectModel;
-using System.Diagnostics;
+using Microsoft.Maui.Controls;
+using Microsoft.Maui.Graphics; // Dla Colors
+using System;
 using System.Threading.Tasks;
-using datawedge_MAUI_SampleApp.Views; // Dla nameof(DashboardView)
 
-namespace datawedge_MAUI_SampleApp.ViewModels
+namespace AppOne.Mobile.ViewModels
 {
-    public partial class ScannerViewModel : ObservableObject, IRecipient<BarcodeScannedMessage>
+    public partial class ScannerViewModel : BaseViewModel, IRecipient<BarcodeScannedMessage>
     {
         private readonly IApiClient _apiClient;
         private readonly IDataWedgeService _dataWedgeService;
+        private readonly INotificationService _notificationService;
+        private readonly IAuthenticationService _authenticationService;
 
         [ObservableProperty]
-        private string _scannedDataInfo = "Oczekiwanie na skan z urządzenia...";
+        string scanStatusMessage = "Gotowy do skanowania";
 
         [ObservableProperty]
-        private ObservableCollection<string> _scanHistory;
+        Color scanStatusColor = Colors.DodgerBlue;
 
         [ObservableProperty]
-        private bool _isProcessing = false;
+        string lastScannedCode = string.Empty;
 
         [ObservableProperty]
-        private string _validationMessage = "Naciśnij przycisk skanowania na urządzeniu.";
+        string loggedInUserDisplayName = string.Empty;
 
-        [ObservableProperty]
-        private Color _messageBackgroundColor = Colors.Gray;
-
-        // Ta właściwość kontroluje, czy DataWedge plugin jest aktywny.
-        // Można by dodać przycisk w UI do jej przełączania, jeśli potrzebne.
-        [ObservableProperty]
-        private bool _isScannerIntegrationActive = true;
-
-        public ScannerViewModel(IApiClient apiClient, IDataWedgeService dataWedgeService)
+        public ScannerViewModel(
+            IApiClient apiClient,
+            IDataWedgeService dataWedgeService,
+            INotificationService notificationService,
+            IAuthenticationService authenticationService)
         {
             _apiClient = apiClient;
             _dataWedgeService = dataWedgeService;
-            ScanHistory = new ObservableCollection<string>();
-            WeakReferenceMessenger.Default.Register<BarcodeScannedMessage>(this);
+            _notificationService = notificationService;
+            _authenticationService = authenticationService;
 
-            // Inicjalizacja i upewnienie się, że skaner (plugin DataWedge) jest aktywny na starcie.
-            _dataWedgeService.Initialize();
-            _dataWedgeService.EnableScanner(_isScannerIntegrationActive);
-            Debug.WriteLine("ScannerViewModel: Initialized. DataWedge integration active: " + _isScannerIntegrationActive);
+            Title = "Skaner Biletów";
+            // ResetScannerStatus(); // Już zainicjowane przez ObservableProperty
+            UpdateLoggedInUserDisplay();
+
+            _authenticationService.AuthenticationStateChanged += OnAuthenticationStateChanged;
         }
 
-        // Metoda wywoływana, gdy DWIntentReceiver otrzyma dane ze skanera fizycznego
-        public void Receive(BarcodeScannedMessage message)
+        private void OnAuthenticationStateChanged(object? sender, EventArgs e)
         {
-            if (IsProcessing)
+            MainThread.BeginInvokeOnMainThread(() =>
             {
-                Debug.WriteLine("ScannerViewModel: Already processing a scan, ignoring new barcode message.");
-                return; // Ignoruj nowe skany, jeśli poprzedni jest jeszcze przetwarzany
-            }
-
-            string barcodeData = message.Value;
-            string? symbology = message.Symbology;
-            Debug.WriteLine($"ScannerViewModel: Hardware scan received - Data: {barcodeData}, Symbology: {symbology ?? "N/A"}");
-
-            MainThread.BeginInvokeOnMainThread(async () =>
-            {
-                // Ustaw komunikat "Skanowanie..." lub "Przetwarzanie..." po otrzymaniu danych
-                ValidationMessage = "Przetwarzanie skanu..."; // Zmieniono z "Skanowanie..."
-                MessageBackgroundColor = Colors.CornflowerBlue;
-                IsProcessing = true; // Zablokuj dalsze przetwarzanie do zakończenia obecnego
-                // OnPropertyChanged(nameof(CanTriggerScan)); // Nie ma już przycisku CanTriggerScan
-
-                ScannedDataInfo = $"Dane: {barcodeData}, Typ: {symbology ?? "N/A"}, Czas: {message.Timestamp:HH:mm:ss}";
-                if (ScanHistory.Count > 20)
+                UpdateLoggedInUserDisplay();
+                if (!_authenticationService.IsLoggedIn && Shell.Current.CurrentPage is ScannerView)
                 {
-                    ScanHistory.RemoveAt(ScanHistory.Count - 1);
+                    // Jeśli użytkownik jest na stronie skanera i został wylogowany, przekieruj
+                    Shell.Current.GoToAsync($"//{nameof(LoginView)}");
                 }
-                ScanHistory.Insert(0, ScannedDataInfo);
-
-                await ProcessScannedCodeInternal(barcodeData);
             });
         }
 
-        private async Task ProcessScannedCodeInternal(string? code)
+        private void UpdateLoggedInUserDisplay()
         {
-            if (string.IsNullOrWhiteSpace(code))
-            {
-                ValidationMessage = "Otrzymano pusty kod.";
-                MessageBackgroundColor = Colors.OrangeRed;
-                IsProcessing = false;
+            LoggedInUserDisplayName = _authenticationService.IsLoggedIn ? $"Zalogowano jako: {_authenticationService.UserName}" : "Niezalogowany";
+        }
+
+        [RelayCommand]
+        async Task Logout()
+        {
+            _authenticationService.Logout();
+            await Shell.Current.GoToAsync($"//{nameof(LoginView)}");
+        }
+
+        public void Receive(BarcodeScannedMessage message)
+        {
+            MainThread.BeginInvokeOnMainThread(async () => await ProcessScannedCode(message.Barcode));
+        }
+
+        private async Task ProcessScannedCode(string barcodeData)
+        {
+            if (IsBusy || string.IsNullOrWhiteSpace(barcodeData))
                 return;
-            }
-            // Komunikat "Przetwarzanie skanu..." został już ustawiony w Receive()
+
+            IsBusy = true;
+            LastScannedCode = $"Zeskanowano: {barcodeData}";
 
             try
             {
-                ValidationResponse response = await _apiClient.ValidateTicketAsync(code);
-                ValidationMessage = response.Message;
-                MessageBackgroundColor = response.IsSuccess ? Colors.Green : Colors.Red;
+                ValidationResponse validationResponse = await _apiClient.ValidateCodeAsync(barcodeData);
+
+                if (validationResponse.IsValid)
+                {
+                    ScanStatusMessage = validationResponse.Message ?? "Kod PRAWIDŁOWY";
+                    ScanStatusColor = Colors.Green;
+                }
+                else
+                {
+                    ScanStatusMessage = validationResponse.Message ?? "Kod NIEPRAWIDŁOWY";
+                    ScanStatusColor = Colors.Red;
+                    await _notificationService.PlayErrorSoundAsync();
+                    await _notificationService.VibrateOnErrorAsync();
+                }
             }
-            catch (System.Exception ex)
+            catch (Exception ex)
             {
-                Debug.WriteLine($"[SCANNER ERROR] API call failed: {ex.Message}");
-                ValidationMessage = "Błąd połączenia z serwerem.";
-                MessageBackgroundColor = Colors.DarkRed;
+                ScanStatusMessage = "Błąd walidacji";
+                ScanStatusColor = Colors.OrangeRed;
+                LastScannedCode = $"Błąd: {ex.Message}";
+                System.Diagnostics.Debug.WriteLine($"Validation error: {ex}");
+                await _notificationService.PlayErrorSoundAsync();
+                await _notificationService.VibrateOnErrorAsync();
             }
             finally
             {
-                await Task.Delay(3000); // Czas na odczytanie komunikatu przez użytkownika
-                ResetScannerStateAfterProcessing();
+                IsBusy = false;
+                // Opcjonalnie: zresetuj status po kilku sekundach
+                // await Task.Delay(5000);
+                // ResetScannerStatus();
             }
         }
 
-        // Usunięto TriggerScanCommand i CanTriggerScan, ponieważ przycisk został usunięty.
-        // Jeśli potrzebujesz programowego wyzwalania skanu do testów, można je przywrócić.
-
-        // Ta komenda może być nadal użyteczna, jeśli chcesz dać użytkownikowi
-        // możliwość włączania/wyłączania integracji ze skanerem DataWedge w ustawieniach aplikacji.
-        [RelayCommand]
-        private void ToggleScannerIntegration()
+        private void ResetScannerStatus()
         {
-            IsScannerIntegrationActive = !IsScannerIntegrationActive;
-            _dataWedgeService.EnableScanner(IsScannerIntegrationActive);
-            ScannedDataInfo = IsScannerIntegrationActive ? "Oczekiwanie na skan z urządzenia..." : "Integracja ze skanerem wyłączona.";
-            if (!IsScannerIntegrationActive)
-            {
-                ValidationMessage = "Skaner (integracja) wyłączony.";
-                MessageBackgroundColor = Colors.DarkGray;
-            }
-            else
-            {
-                ValidationMessage = "Naciśnij przycisk skanowania na urządzeniu.";
-                MessageBackgroundColor = Colors.Gray;
-            }
-            Debug.WriteLine($"ScannerViewModel: DataWedge integration toggled. Active: {IsScannerIntegrationActive}");
+            ScanStatusMessage = "Gotowy do skanowania";
+            ScanStatusColor = Colors.DodgerBlue;
+            LastScannedCode = string.Empty;
         }
 
-        private void ResetScannerStateAfterProcessing()
+        public void OnAppearing()
         {
-            ValidationMessage = IsScannerIntegrationActive ? "Naciśnij przycisk skanowania na urządzeniu." : "Skaner (integracja) wyłączony.";
-            MessageBackgroundColor = Colors.Gray;
-            IsProcessing = false;
+            WeakReferenceMessenger.Default.Register<BarcodeScannedMessage>(this);
+            _dataWedgeService?.EnableScanning();
+            ResetScannerStatus(); // Zresetuj status przy każdym wejściu
+            UpdateLoggedInUserDisplay();
         }
 
-        [RelayCommand]
-        private async Task GoToDashboard()
+        public void OnDisappearing()
         {
-            // Nawigacja wstecz do DashboardView
-            if (Shell.Current.Navigation.NavigationStack.Count > 1)
-            {
-                Debug.WriteLine("ScannerViewModel: Navigating back to Dashboard (GoToAsync \"..\")");
-                await Shell.Current.GoToAsync("..");
-            }
-            else
-            {
-                Debug.WriteLine("ScannerViewModel: Navigation stack is too shallow to go back. Navigating to DashboardView directly (fallback).");
-                await Shell.Current.GoToAsync($"//{nameof(DashboardView)}");
-            }
-        }
-
-        public void Cleanup()
-        {
+            _dataWedgeService?.DisableScanning();
             WeakReferenceMessenger.Default.Unregister<BarcodeScannedMessage>(this);
-            Debug.WriteLine("ScannerViewModel: Unregistered from BarcodeScannedMessage.");
         }
     }
 }

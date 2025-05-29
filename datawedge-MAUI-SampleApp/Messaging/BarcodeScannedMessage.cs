@@ -1,20 +1,19 @@
-﻿// Lokalizacja: datawedge_MAUI_SampleApp/Messaging/BarcodeScannedMessage.cs
-using CommunityToolkit.Mvvm.Messaging.Messages; // Dla ValueChangedMessage
+﻿// Messaging/BarcodeScannedMessage.cs
+using System;
 
-namespace datawedge_MAUI_SampleApp.Messaging
+namespace AppOne.Mobile.Messaging
 {
-    // Wiadomość używana do przekazywania danych zeskanowanego kodu kreskowego.
-    // Dziedziczy z ValueChangedMessage<string>, gdzie Value to dane kodu.
-    public class BarcodeScannedMessage : ValueChangedMessage<string>
+    public class BarcodeScannedMessage
     {
-        // Dodatkowe właściwości, jeśli potrzebne, np. typ kodu, czas skanowania
-        public string? Symbology { get; }
-        public System.DateTime Timestamp { get; }
+        public string Barcode { get; }
+        public string Symbology { get; }
+        public DateTime ScanTime { get; }
 
-        public BarcodeScannedMessage(string barcodeData, string? symbology = null) : base(barcodeData)
+        public BarcodeScannedMessage(string barcode, string symbology, DateTime scanTime)
         {
+            Barcode = barcode;
             Symbology = symbology;
-            Timestamp = System.DateTime.Now;
+            ScanTime = scanTime;
         }
     }
 }

@@ -1,15 +1,16 @@
-﻿// Lokalizacja: datawedge_MAUI_SampleApp/AppShell.xaml.cs
-using datawedge_MAUI_SampleApp.Views;
+﻿// AppShell.xaml.cs
+using AppOne.Mobile.ViewModels;
+using AppOne.Mobile.Views; // Dla rejestracji tras
 
-namespace datawedge_MAUI_SampleApp
+namespace AppOne.Mobile
 {
     public partial class AppShell : Shell
     {
-        public AppShell()
+        public AppShell(AppShellViewModel viewModel)
         {
             InitializeComponent();
+            BindingContext = viewModel;
 
-            // Rejestracja tras dla nawigacji
             Routing.RegisterRoute(nameof(LoginView), typeof(LoginView));
             Routing.RegisterRoute(nameof(DashboardView), typeof(DashboardView));
             Routing.RegisterRoute(nameof(ScannerView), typeof(ScannerView));
