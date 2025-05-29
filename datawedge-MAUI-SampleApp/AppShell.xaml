@@ -1,12 +1,16 @@
 <Shell xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
        xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-       xmlns:views="clr-namespace:AppOne.Mobile.Views"
-       xmlns:viewmodels="clr-namespace:AppOne.Mobile.ViewModels"
-       x:Class="AppOne.Mobile.AppShell"
+       xmlns:views="clr-namespace:datawedge_MAUI_SampleApp.Views"
+       xmlns:viewmodels="clr-namespace:datawedge_MAUI_SampleApp.ViewModels"
+       x:Class="datawedge_MAUI_SampleApp.AppShell"
        x:DataType="viewmodels:AppShellViewModel"
        FlyoutBehavior="Disabled">
     <Shell.TitleView>
-        <Grid ColumnDefinitions="*,Auto" VerticalOptions="Fill" HorizontalOptions="Fill" BackgroundColor="{AppThemeBinding Light={StaticResource Primary}, Dark={StaticResource Gray900}}">
+        <Grid ColumnDefinitions="*,Auto" 
+              VerticalOptions="Fill" 
+              HorizontalOptions="Fill" 
+              BackgroundColor="{AppThemeBinding Light={StaticResource Primary}, Dark={StaticResource Gray900}}">
+
             <Label Grid.Column="0"
                    Text="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=Title}"
                    TextColor="{AppThemeBinding Light={StaticResource White}, Dark={StaticResource Primary}}"
@@ -15,7 +19,12 @@
                    FontAttributes="Bold"
                    Margin="15,0,0,0"/>
 
-            <StackLayout Grid.Column="1" Orientation="Horizontal" HorizontalOptions="End" VerticalOptions="Center" Padding="0,0,10,0" Spacing="8">
+            <StackLayout Grid.Column="1" 
+                         Orientation="Horizontal" 
+                         HorizontalOptions="End" 
+                         VerticalOptions="Center" 
+                         Padding="0,0,10,0" 
+                         Spacing="8">
                 <Label Text="{Binding LoggedInUserDisplayName}"
                        IsVisible="{Binding IsLoggedIn}"
                        TextColor="{AppThemeBinding Light={StaticResource White}, Dark={StaticResource Gray200}}"
@@ -40,9 +49,10 @@
     <ShellContent Title="Logowanie"
                   Route="LoginView"
                   ContentTemplate="{DataTemplate views:LoginView}"
+                  Shell.FlyoutBehavior="Disabled"
                   Shell.TabBarIsVisible="False" />
 
-    <TabBar>
+    <TabBar Route="MainAppTabs">
         <ShellContent Title="Panel Główny"
                       Icon="dashboard_icon.png"
                       Route="DashboardView"

@@ -1,22 +1,24 @@
-﻿// Path: dawideq5/appone.mobile/AppOne.Mobile-364202b6b5699d684b43b2b633ebce2e4ea9dbf7/datawedge-MAUI-SampleApp/ViewModels/DashboardViewModel.cs
-using AppOne.Mobile.ViewModels;
+﻿// Path: dawideq5/appone.mobile/AppOne.Mobile-5f3e9cf781e1f9b6f8ff8363acc50291d9330492/datawedge-MAUI-SampleApp/ViewModels/DashboardViewModel.cs
+using datawedge_MAUI_SampleApp.ViewModels; // Poprawiony using dla BaseViewModel
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using datawedge_MAUI_SampleApp.Interfaces;
-using datawedge_MAUI_SampleApp.Views; // Poprawka CS0104: Upewnij się, że to jest jedyne źródło dla ScannerView i LoginView
+using datawedge_MAUI_SampleApp.Views;
 using System.Threading.Tasks;
-using static Android.Icu.Text.CaseMap;
 
 namespace datawedge_MAUI_SampleApp.ViewModels
 {
-    public partial class DashboardViewModel : BaseViewModel
+    public partial class DashboardViewModel : BaseViewModel // BaseViewModel jest teraz w datawedge_MAUI_SampleApp.ViewModels
     {
         private readonly IAuthenticationService _authenticationService;
         private readonly Interfaces.IDataWedgeService _dataWedgeService;
         private readonly INotificationService _notificationService;
 
         [ObservableProperty]
-        string username = string.Empty;
+        string? username;
+
+        [ObservableProperty]
+        string? welcomeMessage;
 
         public DashboardViewModel(
             IAuthenticationService authenticationService,
@@ -26,16 +28,23 @@ namespace datawedge_MAUI_SampleApp.ViewModels
             _authenticationService = authenticationService;
             _dataWedgeService = dataWedgeService;
             _notificationService = notificationService;
-            Title = "Dashboard";
+            Title = "Panel Główny";
 
-            Task.Run(async () => Username = await _authenticationService.GetCurrentUserAsync() ?? "Gość");
+            Task.Run(async () => await LoadUserData());
             _dataWedgeService.InitializeDataWedge();
+        }
+
+        private async Task LoadUserData()
+        {
+            IsBusy = true;
+            Username = await _authenticationService.GetCurrentUserAsync();
+            WelcomeMessage = string.IsNullOrWhiteSpace(Username) ? "Witaj Gościu!" : $"Witaj, {Username}!";
+            IsBusy = false;
         }
 
         [RelayCommand]
         async Task GoToScannerAsync()
         {
-            // Poprawka CS0104: Upewnij się, że ScannerView jest jednoznacznie zdefiniowane
             await Shell.Current.GoToAsync(nameof(ScannerView));
         }
 
@@ -46,7 +55,6 @@ namespace datawedge_MAUI_SampleApp.ViewModels
             if (confirm)
             {
                 _authenticationService.Logout();
-                // Poprawka CS0104: Upewnij się, że LoginView jest jednoznacznie zdefiniowane
                 await Shell.Current.GoToAsync($"//{nameof(LoginView)}");
             }
         }
@@ -55,20 +63,21 @@ namespace datawedge_MAUI_SampleApp.ViewModels
         void EnableScanner()
         {
             _dataWedgeService.EnableScanner();
-            _notificationService.ShowNotification("Skaner", "Skaner włączony.", "OK");
+            _notificationService.ShowNotification("Skaner", "Skaner włączony (profil).", "OK");
         }
 
         [RelayCommand]
         void DisableScanner()
         {
             _dataWedgeService.DisableScanner();
-            _notificationService.ShowNotification("Skaner", "Skaner wyłączony.", "OK");
+            _notificationService.ShowNotification("Skaner", "Skaner wyłączony (profil).", "OK");
         }
 
         [RelayCommand]
         void StartSoftScan()
         {
             _dataWedgeService.StartSoftScan();
+            _notificationService.ShowNotification("Skaner", "Rozpoczęto skanowanie (soft trigger).", "OK");
         }
 
         [RelayCommand]

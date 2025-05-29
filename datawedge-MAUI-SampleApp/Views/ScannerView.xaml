@@ -1,15 +1,14 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             xmlns:viewmodels="clr-namespace:AppOne.Mobile.ViewModels"
-             x:Class="AppOne.Mobile.Views.ScannerView"
+             xmlns:viewmodels="clr-namespace:datawedge_MAUI_SampleApp.ViewModels"
+             x:Class="datawedge_MAUI_SampleApp.Views.ScannerView"
              x:DataType="viewmodels:ScannerViewModel"
              Title="{Binding Title}">
 
-    <Grid RowDefinitions="Auto, *, Auto" Padding="15" RowSpacing="10" BackgroundColor="{AppThemeBinding Light={StaticResource Gray100}, Dark={StaticResource Gray950}}">
-
-        <Border Grid.Row="1"
+    <Grid RowDefinitions="Auto, *, Auto, Auto" Padding="15" RowSpacing="10" BackgroundColor="{AppThemeBinding Light={StaticResource Gray100}, Dark={StaticResource Gray950}}">
+        <Border Grid.Row="1" 
                 StrokeThickness="2"
-                Stroke="{Binding ScanStatusColor}"
+                Stroke="{Binding ScanStatusColor, FallbackValue=Gray}"
                 BackgroundColor="{AppThemeBinding Light={StaticResource White}, Dark={StaticResource Gray800}}"
                 Padding="20"
                 Margin="0">
@@ -23,13 +22,13 @@
                        Aspect="AspectFit"
                        SemanticProperties.Description="Ikona skanera"/>
 
-                <Label Text="{Binding ScanStatusMessage}"
+                <Label Text="{Binding ScanStatusMessage, FallbackValue='Oczekiwanie...'}"
                        FontSize="Title"
                        FontAttributes="Bold"
                        HorizontalTextAlignment="Center"
-                       TextColor="{Binding ScanStatusColor}"/>
+                       TextColor="{Binding ScanStatusColor, FallbackValue=Gray}"/>
 
-                <Label Text="{Binding LastScannedCode}"
+                <Label Text="{Binding LastScannedCode, FallbackValue='Brak kodu'}"
                        FontSize="Body"
                        HorizontalTextAlignment="Center"
                        TextColor="{AppThemeBinding Light={StaticResource Gray600}, Dark={StaticResource Gray300}}"
@@ -37,8 +36,14 @@
             </VerticalStackLayout>
         </Border>
 
-        <Label Grid.Row="2"
-               Text="Skieruj urządzenie na kod kreskowy lub QR."
+        <VerticalStackLayout Grid.Row="2" Spacing="10" Margin="0,10,0,0">
+            <Button Text="Rozpocznij skanowanie (SoftTrigger)" Command="{Binding StartScanCommand}" />
+            <Button Text="Zatrzymaj skanowanie (SoftTrigger)" Command="{Binding StopScanCommand}" />
+            <Button Text="Waliduj ostatni skan" Command="{Binding ValidateCurrentScanCommand}" />
+        </VerticalStackLayout>
+
+        <Label Grid.Row="3" 
+               Text="Skieruj urządzenie na kod kreskowy lub QR lub użyj przycisku."
                HorizontalTextAlignment="Center"
                FontSize="Small"
                TextColor="{AppThemeBinding Light={StaticResource Gray500}, Dark={StaticResource Gray400}}"

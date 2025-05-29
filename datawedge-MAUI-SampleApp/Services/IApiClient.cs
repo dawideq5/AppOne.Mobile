@@ -5,8 +5,7 @@
 // Poniższy kod jest tu tylko dla kompletności, jeśli z jakiegoś powodu ten plik jest nadal potrzebny,
 // ale zalecane jest jego usunięcie i używanie tylko Interfaces/IApiClient.cs.
 
-using AppOne.Mobile.Models;
-using datawedge_MAUI_SampleApp.Models; // Poprawka CS0234
+using AppOne.Mobile.Models; // Corrected namespace
 using System.Threading.Tasks;
 
 namespace datawedge_MAUI_SampleApp.Services
