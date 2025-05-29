@@ -1,17 +1,39 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <application android:allowBackup="true" android:icon="@mipmap/appicon" android:roundIcon="@mipmap/appicon_round" android:supportsRtl="true" android:label="AppOne.Mobile">
-        <receiver android:name=".DWIntentReceiver" android:enabled="true" android:exported="true">
-            <intent-filter>
-                <action android:name="com.appone.mobile.SCAN" /> </intent-filter>
-        </receiver>
-        <receiver android:name=".ScreenOffReceiver" android:enabled="true" android:exported="false">
-            <intent-filter>
-                <action android:name="android.intent.action.SCREEN_OFF" />
-            </intent-filter>
-        </receiver>
-    </application>
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.VIBRATE" />
-    </manifest>
+	<!-- 
+		Nazwa pakietu jest zazwyczaj ustawiana przez ApplicationId w pliku .csproj.
+		Atrybut 'package' tutaj może być placeholderem, np. "com.companyname.appname"
+		lub może być zgodny z ApplicationId. System budowania MAUI powinien to obsłużyć.
+	-->
+	<application 
+		android:allowBackup="true" 
+		android:icon="@mipmap/appicon" 
+		android:roundIcon="@mipmap/appicon_round" 
+		android:supportsRtl="true" 
+		android:label="${applicationTitle}"> <receiver 
+			android:name=".DWIntentReceiver" 
+			android:enabled="true" 
+			android:exported="true">
+			<intent-filter>
+				<action android:name="com.appone.mobile.SCAN" /> 
+				</intent-filter>
+		</receiver>
+		<receiver 
+			android:name=".ScreenOffReceiver" 
+			android:enabled="true" 
+			android:exported="false">
+			<intent-filter>
+				<action android:name="android.intent.action.SCREEN_OFF" />
+			</intent-filter>
+		</receiver>
+	</application>
+	<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+	<uses-permission android:name="android.permission.INTERNET" />
+	<uses-permission android:name="android.permission.VIBRATE" />
+	<!-- 
+		Jeśli DataWedge wymaga dodatkowych uprawnień do komunikacji, 
+		mogą być one potrzebne tutaj, np. dla zapytań o zainstalowane pakiety, jeśli używasz QUERY_ALL_PACKAGES
+		(wymaga ostrożności i jest ograniczone przez Google Play).
+		Dla standardowej komunikacji przez intencje zazwyczaj nie są potrzebne specjalne uprawnienia.
+	-->
+	</manifest>
