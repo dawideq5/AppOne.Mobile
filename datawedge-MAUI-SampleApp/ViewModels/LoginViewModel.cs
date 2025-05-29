@@ -1,84 +1,63 @@
-﻿// ViewModels/LoginViewModel.cs
-using AppOne.Mobile.Interfaces;
-using AppOne.Mobile.Views; // Dla nameof(DashboardView)
+﻿// Path: dawideq5/appone.mobile/AppOne.Mobile-364202b6b5699d684b43b2b633ebce2e4ea9dbf7/datawedge-MAUI-SampleApp/ViewModels/LoginViewModel.cs
+using AppOne.Mobile.ViewModels;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using datawedge_MAUI_SampleApp.Interfaces;
 using datawedge_MAUI_SampleApp.Views;
-using Microsoft.Maui.Controls;
+using IntelliJ.Lang.Annotations;
 using System.Threading.Tasks;
+using static Android.Icu.Text.CaseMap;
 
-namespace AppOne.Mobile.ViewModels
+namespace datawedge_MAUI_SampleApp.ViewModels
 {
     public partial class LoginViewModel : BaseViewModel
     {
         private readonly IAuthenticationService _authenticationService;
-        private readonly IApiClient _apiClient; // Dodajemy IApiClient, jeśli walidacja jest tu
+        private readonly INotificationService _notificationService;
+
+        // Poprawka CS8618: Inicjalizacja pól lub oznaczenie jako nullable
+        [ObservableProperty]
+        [NotifyCanExecuteChangedFor(nameof(LoginCommand))]
+        string username = string.Empty; // Inicjalizacja
 
         [ObservableProperty]
-        string username = string.Empty;
+        [NotifyCanExecuteChangedFor(nameof(LoginCommand))]
+        string password = string.Empty; // Inicjalizacja
 
-        [ObservableProperty]
-        string password = string.Empty;
-
-        public LoginViewModel(IAuthenticationService authenticationService, IApiClient apiClient)
+        public LoginViewModel(IAuthenticationService authenticationService, INotificationService notificationService)
         {
             _authenticationService = authenticationService;
-            _apiClient = apiClient; // Przypisz IApiClient
-            Title = "Logowanie";
-            LoadLastUserCommand = new AsyncRelayCommand(LoadLastUserAsync);
+            _notificationService = notificationService;
+            Title = "Login";
         }
 
-        public IAsyncRelayCommand LoadLastUserCommand { get; }
-
-        private async Task LoadLastUserAsync()
+        private bool CanLogin()
         {
-            Username = await _authenticationService.GetLastLoggedInUserAsync() ?? string.Empty;
+            return !string.IsNullOrWhiteSpace(Username) && !string.IsNullOrWhiteSpace(Password) && !IsBusy;
         }
 
-        [RelayCommand]
-        async Task Login()
+        [RelayCommand(CanExecute = nameof(CanLogin))]
+        async Task LoginAsync()
         {
-            if (IsBusy)
-                return;
-
             IsBusy = true;
-            try
-            {
-                if (string.IsNullOrWhiteSpace(Username) || string.IsNullOrWhiteSpace(Password))
-                {
-                    await Shell.Current.DisplayAlert("Błąd logowania", "Nazwa użytkownika i hasło nie mogą być puste.", "OK");
-                    return;
-                }
+            // Aktualizacja stanu CanExecute dla komendy
+            LoginCommand.NotifyCanExecuteChanged();
 
-                // Użyj AuthenticationService do logowania
-                bool success = await _authenticationService.LoginAsync(Username, Password);
+            var token = await _authenticationService.LoginAsync(Username, Password);
 
-                if (success)
-                {
-                    // Nawigacja do DashboardView
-                    await Shell.Current.GoToAsync($"//{nameof(DashboardView)}");
-                }
-                else
-                {
-                    await Shell.Current.DisplayAlert("Błąd logowania", "Nieprawidłowa nazwa użytkownika lub hasło.", "OK");
-                }
-            }
-            catch (System.Exception ex)
+            if (!string.IsNullOrEmpty(token))
             {
-                await Shell.Current.DisplayAlert("Błąd", $"Wystąpił błąd podczas logowania: {ex.Message}", "OK");
-                System.Diagnostics.Debug.WriteLine($"Login failed: {ex}");
+                await Shell.Current.GoToAsync($"//{nameof(DashboardView)}");
             }
-            finally
+            else
             {
-                IsBusy = false;
+                // Poprawka CS1061: Upewniono się, że INotificationService ma metodę ShowNotification
+                await _notificationService.ShowNotification("Błąd logowania", "Nieprawidłowa nazwa użytkownika lub hasło.", "OK");
+                Password = string.Empty; // Wyczyść hasło po nieudanym logowaniu
             }
-        }
-
-        public async Task OnAppearing()
-        {
-            await LoadLastUserAsync();
-            // Resetuj hasło przy każdym pojawieniu się widoku
-            Password = string.Empty;
+            IsBusy = false;
+            // Aktualizacja stanu CanExecute dla komendy
+            LoginCommand.NotifyCanExecuteChanged();
         }
     }
 }

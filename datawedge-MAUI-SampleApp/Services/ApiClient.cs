@@ -1,71 +1,80 @@
-﻿// Services/ApiClient.cs
-using AppOne.Mobile.Interfaces;
+﻿// Path: dawideq5/appone.mobile/AppOne.Mobile-364202b6b5699d684b43b2b633ebce2e4ea9dbf7/datawedge-MAUI-SampleApp/Services/ApiClient.cs
 using AppOne.Mobile.Models;
-using datawedge_MAUI_SampleApp.Models;
-using System;
+using datawedge_MAUI_SampleApp.Interfaces;
+using datawedge_MAUI_SampleApp.Models;   // Poprawka CS0234: Upewnij się, że Models istnieje i zawiera ValidationResponse
+using Microsoft.Maui.Storage;
 using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-namespace AppOne.Mobile.Services
+namespace datawedge_MAUI_SampleApp.Services
 {
-    public class ApiClient : IApiClient
+    public class ApiClient : Interfaces.IApiClient
     {
         private readonly HttpClient _httpClient;
-        private const string BaseUrl = "https://your-api-base-url.com/api/"; // ZMIEŃ NA SWÓJ ADRES API
+        private const string BaseUrl = "https://yourapi.azurewebsites.net";
 
-        public ApiClient()
+        public ApiClient(HttpClient httpClient)
         {
-            _httpClient = new HttpClient { BaseAddress = new Uri(BaseUrl) };
-            // Możesz tutaj dodać domyślne nagłówki, np. Authorization, jeśli używasz tokenów
+            _httpClient = httpClient;
         }
 
-        public async Task<ValidationResponse> ValidateCodeAsync(string code)
+        private async Task PrepareHttpClientAuth()
         {
-            try
+            var token = await SecureStorage.GetAsync("auth_token");
+            if (!string.IsNullOrEmpty(token))
             {
-                // Przykładowe żądanie GET. Dostosuj do swojego API.
-                // HttpResponseMessage response = await _httpClient.GetAsync($"validate?code={code}");
-                // response.EnsureSuccessStatusCode();
-                // string content = await response.Content.ReadAsStringAsync();
-                // return JsonSerializer.Deserialize<ValidationResponse>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
-                //       ?? new ValidationResponse { IsValid = false, Message = "Błąd deserializacji odpowiedzi API." };
+                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            }
+            else
+            {
+                _httpClient.DefaultRequestHeaders.Authorization = null;
+            }
+        }
 
-                // --- SYMULACJA ---
-                // Zastąp to rzeczywistym wywołaniem API
-                await Task.Delay(500); // Symulacja opóźnienia sieciowego
-                if (string.IsNullOrWhiteSpace(code))
-                {
-                    return new ValidationResponse { IsValid = false, Message = "Kod nie może być pusty." };
-                }
-                if (code.StartsWith("INVALID"))
-                {
-                    return new ValidationResponse { IsValid = false, Message = "Kod nieprawidłowy (symulacja z API)." };
-                }
-                if (code == "TIMEOUT") // Symulacja błędu
-                {
-                    throw new TimeoutException("API call timed out.");
-                }
-                return new ValidationResponse { IsValid = true, Message = "Kod prawidłowy (symulacja z API)." };
-                // --- KONIEC SYMULACJI ---
-            }
-            catch (HttpRequestException ex)
+        public async Task<string> GetHelloAsync()
+        {
+            await PrepareHttpClientAuth();
+            var response = await _httpClient.GetAsync($"{BaseUrl}/api/hello");
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadAsStringAsync();
+        }
+
+        public async Task<string> GetSecuredHelloAsync()
+        {
+            await PrepareHttpClientAuth();
+            var response = await _httpClient.GetAsync($"{BaseUrl}/api/secured/hello");
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadAsStringAsync();
+        }
+
+        public async Task<ValidationResponse> ValidateBarcodeAsync(string barcode)
+        {
+            await PrepareHttpClientAuth();
+            var requestContent = new StringContent(JsonSerializer.Serialize(new { barcodeData = barcode }), Encoding.UTF8, "application/json");
+            var response = await _httpClient.PostAsync($"{BaseUrl}/api/validateBarcode", requestContent);
+
+            if (response.IsSuccessStatusCode)
             {
-                // Błąd połączenia lub błąd HTTP
-                Console.WriteLine($"API request error: {ex.Message}");
-                return new ValidationResponse { IsValid = false, Message = $"Błąd połączenia z API: {ex.Message}" };
+                var jsonResponse = await response.Content.ReadAsStringAsync();
+                try
+                {
+                    var validationResponse = JsonSerializer.Deserialize<ValidationResponse>(jsonResponse, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    return validationResponse ?? new ValidationResponse { IsValid = false, Message = "Failed to deserialize API response." };
+                }
+                catch (JsonException ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"JSON Deserialization Error: {ex}");
+                    return new ValidationResponse { IsValid = false, Message = $"Error deserializing response: {ex.Message}" };
+                }
             }
-            catch (JsonException ex)
+            else
             {
-                // Błąd deserializacji
-                Console.WriteLine($"API deserialization error: {ex.Message}");
-                return new ValidationResponse { IsValid = false, Message = "Błąd przetwarzania odpowiedzi z API." };
-            }
-            catch (Exception ex)
-            {
-                // Inne błędy
-                Console.WriteLine($"API general error: {ex.Message}");
-                return new ValidationResponse { IsValid = false, Message = $"Wystąpił nieoczekiwany błąd: {ex.Message}" };
+                var errorContent = await response.Content.ReadAsStringAsync();
+                System.Diagnostics.Debug.WriteLine($"API Error: {response.StatusCode} - {errorContent}");
+                return new ValidationResponse { IsValid = false, Message = $"API request failed: {response.ReasonPhrase} - {errorContent}" };
             }
         }
     }

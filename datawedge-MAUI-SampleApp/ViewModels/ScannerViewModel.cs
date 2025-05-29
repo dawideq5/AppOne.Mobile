@@ -1,147 +1,130 @@
-﻿// ViewModels/ScannerViewModel.cs
-using AppOne.Mobile.Interfaces;
+﻿// Path: dawideq5/appone.mobile/AppOne.Mobile-364202b6b5699d684b43b2b633ebce2e4ea9dbf7/datawedge-MAUI-SampleApp/ViewModels/ScannerViewModel.cs
 using AppOne.Mobile.Messaging;
 using AppOne.Mobile.Models;
-using AppOne.Mobile.Views; // Dla nameof(LoginView)
+using AppOne.Mobile.ViewModels;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
-using Microsoft.Maui.Controls;
-using Microsoft.Maui.Graphics; // Dla Colors
-using System;
+using datawedge_MAUI_SampleApp.Interfaces;
+using datawedge_MAUI_SampleApp.Messaging; // Poprawka CS0234: Upewnij się, że Messaging istnieje i zawiera BarcodeScannedMessage
+using datawedge_MAUI_SampleApp.Models;   // Poprawka CS0234: Upewnij się, że Models istnieje i zawiera ValidationResponse
+using IntelliJ.Lang.Annotations;
+using System.Collections.ObjectModel;
 using System.Threading.Tasks;
+using static Android.Icu.Text.CaseMap;
 
-namespace AppOne.Mobile.ViewModels
+namespace datawedge_MAUI_SampleApp.ViewModels
 {
     public partial class ScannerViewModel : BaseViewModel, IRecipient<BarcodeScannedMessage>
     {
-        private readonly IApiClient _apiClient;
-        private readonly IDataWedgeService _dataWedgeService;
+        private readonly Interfaces.IDataWedgeService _dataWedgeService;
+        private readonly Interfaces.IApiClient _apiClient;
         private readonly INotificationService _notificationService;
-        private readonly IAuthenticationService _authenticationService;
 
         [ObservableProperty]
-        string scanStatusMessage = "Gotowy do skanowania";
+        string scannedData = "Oczekiwanie na skan...";
 
         [ObservableProperty]
-        Color scanStatusColor = Colors.DodgerBlue;
+        string lastValidationResult = "Brak walidacji.";
 
-        [ObservableProperty]
-        string lastScannedCode = string.Empty;
-
-        [ObservableProperty]
-        string loggedInUserDisplayName = string.Empty;
+        public ObservableCollection<string> ScanHistory { get; } = new ObservableCollection<string>();
 
         public ScannerViewModel(
-            IApiClient apiClient,
-            IDataWedgeService dataWedgeService,
-            INotificationService notificationService,
-            IAuthenticationService authenticationService)
+            Interfaces.IDataWedgeService dataWedgeService,
+            Interfaces.IApiClient apiClient,
+            INotificationService notificationService)
         {
-            _apiClient = apiClient;
             _dataWedgeService = dataWedgeService;
+            _apiClient = apiClient;
             _notificationService = notificationService;
-            _authenticationService = authenticationService;
-
-            Title = "Skaner Biletów";
-            // ResetScannerStatus(); // Już zainicjowane przez ObservableProperty
-            UpdateLoggedInUserDisplay();
-
-            _authenticationService.AuthenticationStateChanged += OnAuthenticationStateChanged;
+            Title = "Skaner";
+            WeakReferenceMessenger.Default.Register(this);
         }
 
-        private void OnAuthenticationStateChanged(object? sender, EventArgs e)
+        public async void Receive(BarcodeScannedMessage message)
         {
-            MainThread.BeginInvokeOnMainThread(() =>
+            ScannedData = $"Dane: {message.Barcode}, Typ: {message.Symbology}";
+            ScanHistory.Insert(0, ScannedData);
+            if (ScanHistory.Count > 20)
             {
-                UpdateLoggedInUserDisplay();
-                if (!_authenticationService.IsLoggedIn && Shell.Current.CurrentPage is ScannerView)
-                {
-                    // Jeśli użytkownik jest na stronie skanera i został wylogowany, przekieruj
-                    Shell.Current.GoToAsync($"//{nameof(LoginView)}");
-                }
-            });
-        }
-
-        private void UpdateLoggedInUserDisplay()
-        {
-            LoggedInUserDisplayName = _authenticationService.IsLoggedIn ? $"Zalogowano jako: {_authenticationService.UserName}" : "Niezalogowany";
+                ScanHistory.RemoveAt(ScanHistory.Count - 1);
+            }
+            await ValidateBarcodeAsync(message.Barcode);
         }
 
         [RelayCommand]
-        async Task Logout()
+        async Task ValidateCurrentScanAsync()
         {
-            _authenticationService.Logout();
-            await Shell.Current.GoToAsync($"//{nameof(LoginView)}");
-        }
-
-        public void Receive(BarcodeScannedMessage message)
-        {
-            MainThread.BeginInvokeOnMainThread(async () => await ProcessScannedCode(message.Barcode));
-        }
-
-        private async Task ProcessScannedCode(string barcodeData)
-        {
-            if (IsBusy || string.IsNullOrWhiteSpace(barcodeData))
-                return;
-
-            IsBusy = true;
-            LastScannedCode = $"Zeskanowano: {barcodeData}";
-
-            try
+            if (ScannedData.StartsWith("Dane: "))
             {
-                ValidationResponse validationResponse = await _apiClient.ValidateCodeAsync(barcodeData);
-
-                if (validationResponse.IsValid)
+                var parts = ScannedData.Split(new[] { ", Typ: " }, System.StringSplitOptions.None);
+                var barcodePart = parts[0].Replace("Dane: ", "");
+                if (!string.IsNullOrWhiteSpace(barcodePart) && barcodePart != "Oczekiwanie na skan...")
                 {
-                    ScanStatusMessage = validationResponse.Message ?? "Kod PRAWIDŁOWY";
-                    ScanStatusColor = Colors.Green;
+                    await ValidateBarcodeAsync(barcodePart);
                 }
                 else
                 {
-                    ScanStatusMessage = validationResponse.Message ?? "Kod NIEPRAWIDŁOWY";
-                    ScanStatusColor = Colors.Red;
-                    await _notificationService.PlayErrorSoundAsync();
-                    await _notificationService.VibrateOnErrorAsync();
+                    await _notificationService.ShowNotification("Walidacja", "Brak danych do walidacji.", "OK");
                 }
             }
-            catch (Exception ex)
+            else
             {
-                ScanStatusMessage = "Błąd walidacji";
-                ScanStatusColor = Colors.OrangeRed;
-                LastScannedCode = $"Błąd: {ex.Message}";
-                System.Diagnostics.Debug.WriteLine($"Validation error: {ex}");
-                await _notificationService.PlayErrorSoundAsync();
-                await _notificationService.VibrateOnErrorAsync();
+                await _notificationService.ShowNotification("Walidacja", "Brak danych do walidacji (zeskanuj kod).", "OK");
+            }
+        }
+
+        private async Task ValidateBarcodeAsync(string barcode)
+        {
+            if (string.IsNullOrWhiteSpace(barcode))
+            {
+                LastValidationResult = "Błąd: Pusty kod kreskowy do walidacji.";
+                await _notificationService.ShowNotification("Walidacja", LastValidationResult, "OK");
+                return;
+            }
+
+            IsBusy = true;
+            try
+            {
+                ValidationResponse? validationResponse = await _apiClient.ValidateBarcodeAsync(barcode);
+                if (validationResponse != null)
+                {
+                    LastValidationResult = $"Walidacja '{barcode}': {(validationResponse.IsValid ? "PRAWIDŁOWY" : "NIEPRAWIDŁOWY")} - {validationResponse.Message}";
+                    await _notificationService.ShowNotification("Wynik Walidacji", LastValidationResult, "OK");
+                }
+                else
+                {
+                    LastValidationResult = $"Walidacja '{barcode}': Nie udało się uzyskać odpowiedzi.";
+                    await _notificationService.ShowNotification("Błąd Walidacji", LastValidationResult, "OK");
+                }
+            }
+            catch (System.Exception ex)
+            {
+                LastValidationResult = $"Błąd walidacji '{barcode}': {ex.Message}";
+                await _notificationService.ShowNotification("Krytyczny Błąd Walidacji", LastValidationResult, "OK");
+                System.Diagnostics.Debug.WriteLine($"Validation Error: {ex}");
             }
             finally
             {
                 IsBusy = false;
-                // Opcjonalnie: zresetuj status po kilku sekundach
-                // await Task.Delay(5000);
-                // ResetScannerStatus();
             }
         }
 
-        private void ResetScannerStatus()
+        [RelayCommand]
+        void StartScan()
         {
-            ScanStatusMessage = "Gotowy do skanowania";
-            ScanStatusColor = Colors.DodgerBlue;
-            LastScannedCode = string.Empty;
+            _dataWedgeService.StartSoftScan();
         }
 
-        public void OnAppearing()
+        [RelayCommand]
+        void StopScan()
         {
-            WeakReferenceMessenger.Default.Register<BarcodeScannedMessage>(this);
-            _dataWedgeService?.EnableScanning();
-            ResetScannerStatus(); // Zresetuj status przy każdym wejściu
-            UpdateLoggedInUserDisplay();
+            _dataWedgeService.StopSoftScan();
         }
 
-        public void OnDisappearing()
+        public void Cleanup()
         {
-            _dataWedgeService?.DisableScanning();
-            WeakReferenceMessenger.Default.Unregister<BarcodeScannedMessage>(this);
+            WeakReferenceMessenger.Default.UnregisterAll(this);
         }
     }
 }

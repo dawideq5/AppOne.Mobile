@@ -1,74 +1,29 @@
-﻿// Services/NotificationService.cs
-using AppOne.Mobile.Interfaces;
-using Microsoft.Maui.Devices;
-using Plugin.Maui.Audio;
-using System;
-using System.Threading.Tasks;
+﻿// Path: dawideq5/appone.mobile/AppOne.Mobile-364202b6b5699d684b43b2b633ebce2e4ea9dbf7/datawedge-MAUI-SampleApp/Services/NotificationService.cs
+using datawedge_MAUI_SampleApp.Interfaces;
+using System.Threading.Tasks; // Dodano dla Task
 
-namespace AppOne.Mobile.Services
+namespace datawedge_MAUI_SampleApp.Services
 {
     public class NotificationService : INotificationService
     {
-        private readonly IAudioManager _audioManager;
-        private const string ErrorSoundFileName = "error_sound.mp3"; // Upewnij się, że plik istnieje w Resources/Raw
-
-        public NotificationService(IAudioManager audioManager)
+        public Task ShowNotification(string title, string message, string cancel)
         {
-            _audioManager = audioManager;
+            if (Application.Current?.MainPage == null)
+            {
+                return Task.CompletedTask;
+            }
+            // Użyj DisplayAlert z MainPage aplikacji
+            return Application.Current.MainPage.DisplayAlert(title, message, cancel);
         }
 
-        public async Task PlayErrorSoundAsync()
+        public Task<bool> ShowConfirmation(string title, string message, string accept, string cancel)
         {
-            try
+            if (Application.Current?.MainPage == null)
             {
-                if (_audioManager == null)
-                {
-                    Console.WriteLine("Error: AudioManager is not initialized.");
-                    return;
-                }
-
-                // Upewnij się, że plik error_sound.mp3 istnieje w Resources/Raw i ma Build Action = MauiAsset
-                var player = _audioManager.CreatePlayer(await FileSystem.OpenAppPackageFileAsync(ErrorSoundFileName));
-                if (player != null)
-                {
-                    player.Play();
-                }
-                else
-                {
-                    Console.WriteLine($"Error: Could not create audio player for {ErrorSoundFileName}. Check if file exists and path is correct.");
-                }
+                return Task.FromResult(false);
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error playing sound: {ex.Message}");
-            }
-        }
-
-        public async Task VibrateOnErrorAsync()
-        {
-            try
-            {
-                if (Vibration.Default.IsSupported)
-                {
-                    Vibration.Default.Vibrate(TimeSpan.FromMilliseconds(100));
-                    await Task.Delay(150);
-                    Vibration.Default.Vibrate(TimeSpan.FromMilliseconds(100));
-                    await Task.Delay(150);
-                    Vibration.Default.Vibrate(TimeSpan.FromMilliseconds(100));
-                }
-                else
-                {
-                    Console.WriteLine("Vibration not supported on this device.");
-                }
-            }
-            catch (FeatureNotSupportedException ex)
-            {
-                Console.WriteLine($"Vibration not supported: {ex.Message}");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error during vibration: {ex.Message}");
-            }
+            // Użyj DisplayAlert z MainPage aplikacji
+            return Application.Current.MainPage.DisplayAlert(title, message, accept, cancel);
         }
     }
 }

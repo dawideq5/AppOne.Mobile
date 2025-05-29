@@ -1,14 +1,14 @@
-﻿// Interfaces/IApiClient.cs
-using AppOne.Mobile.Models; // Upewnij się, że ValidationResponse jest tutaj
-using datawedge_MAUI_SampleApp.Models;
+﻿// Path: dawideq5/appone.mobile/AppOne.Mobile-364202b6b5699d684b43b2b633ebce2e4ea9dbf7/datawedge-MAUI_SampleApp/Interfaces/IApiClient.cs
+using AppOne.Mobile.Models;
+using datawedge_MAUI_SampleApp.Models; // Poprawka CS0234: Upewnij się, że Models istnieje i zawiera ValidationResponse
 using System.Threading.Tasks;
 
-namespace AppOne.Mobile.Interfaces
+namespace datawedge_MAUI_SampleApp.Interfaces
 {
     public interface IApiClient
     {
-        Task<ValidationResponse> ValidateCodeAsync(string code);
-        // Dodaj inne metody API, jeśli są potrzebne
-        // Przykład: Task<User> GetUserAsync(string userId);
+        Task<string> GetHelloAsync();
+        Task<string> GetSecuredHelloAsync();
+        Task<ValidationResponse> ValidateBarcodeAsync(string barcode);
     }
 }

@@ -1,189 +1,158 @@
-﻿// Services/DataWedgeService.cs
-using AppOne.Mobile.Interfaces;
-using AppOne.Mobile.Messaging; // Dla BarcodeScannedMessage
-using CommunityToolkit.Mvvm.Messaging; // Dla WeakReferenceMessenger
-using System;
-using Android.OS;
-using datawedge_MAUI_SampleApp.Platforms.Android;
-
-using datawedge_MAUI_SampleApp.Messaging;
-
-
+﻿// Path: dawideq5/appone.mobile/AppOne.Mobile-364202b6b5699d684b43b2b633ebce2e4ea9dbf7/datawedge-MAUI-SampleApp/Services/DataWedgeService.cs
 #if ANDROID
 using Android.Content;
-using Application = Android.App.Application;
+using Android.OS;
 #endif
+using System;
+using datawedge_MAUI_SampleApp.Interfaces;
+using datawedge_MAUI_SampleApp.Platforms.Android;
+using datawedge_MAUI_SampleApp.Messaging;      // Poprawka CS0234: Upewnij się, że Messaging istnieje i zawiera BarcodeScannedMessage
+using Microsoft.Maui.ApplicationModel;
+using CommunityToolkit.Mvvm.Messaging;
+using AppOne.Mobile.Messaging;
 
-namespace AppOne.Mobile.Services
+namespace datawedge_MAUI_SampleApp.Services
 {
-    public class DataWedgeService : IDataWedgeService
+    public class DataWedgeService : Interfaces.IDataWedgeService
     {
-        // Zdefiniuj stałe dla akcji i extras DataWedge, jeśli są potrzebne globalnie
-        public const string ActionDataWedgeFrom62 = "com.symbol.datawedge.api.ACTION_DATAWEDGE_FROM_6_2";
-        public const string ExtraSwitchToProfile = "com.symbol.datawedge.api.SWITCH_TO_PROFILE";
-        public const string ExtraScannerInputPlugin = "com.symbol.datawedge.api.SCANNER_INPUT_PLUGIN";
-        public const string ExtraEnablePlugin = "ENABLE_PLUGIN";
-        public const string ExtraDisablePlugin = "DISABLE_PLUGIN";
-        public const string DataWedgeProfileName = "AppOneProfile"; // Ustaw nazwę swojego profilu DataWedge
+        private const string ActionDatawedge = "com.symbol.datawedge.api.ACTION";
+        private const string ExtraSetDefaultProfile = "com.symbol.datawedge.api.SET_DEFAULT_PROFILE";
+        private const string ExtraCreateProfile = "com.symbol.datawedge.api.CREATE_PROFILE";
+        private const string ExtraSoftScanTrigger = "com.symbol.datawedge.api.SOFT_SCAN_TRIGGER";
+        private const string ExtraScannerInputPlugin = "com.symbol.datawedge.api.SCANNER_INPUT_PLUGIN";
+        private const string ProfileName = "AppOneMAUIProfile";
 
         public DataWedgeService()
         {
-            // Konstruktor może być pusty lub zawierać inicjalizację specyficzną dla platformy
+            WeakReferenceMessenger.Default.Register<BarcodeScannedMessage>(this, (r, m) =>
+            {
+                System.Diagnostics.Debug.WriteLine($"DataWedgeService received scan: {m.Barcode} ({m.Symbology})");
+            });
         }
 
-        public void Init()
-        {
-            // Tutaj można umieścić logikę inicjalizacji, np. tworzenie profilu DataWedge,
-            // jeśli nie jest on tworzony ręcznie lub przez konfigurację.
-            // Na ogół, profil jest konfigurowany w DataWedge, a aplikacja tylko się do niego przełącza
-            // lub włącza/wyłącza skanowanie w domyślnym profilu.
-            System.Diagnostics.Debug.WriteLine("DataWedgeService: Init called.");
-
-            // Przykładowe tworzenie profilu (zaawansowane, zwykle niepotrzebne jeśli profil istnieje)
-            // CreateDataWedgeProfile();
-        }
-
-        public void EnableScanning()
+        public void InitializeDataWedge()
         {
 #if ANDROID
-            System.Diagnostics.Debug.WriteLine("DataWedgeService: Attempting to enable scanning.");
-            try
-            {
-                Bundle b = new Bundle();
-                b.PutString(ExtraSwitchToProfile, DataWedgeProfileName); // Przełącz na swój profil
-                SendDataWedgeIntentWithExtra(ActionDataWedgeFrom62, b);
-
-                // Alternatywnie, jeśli nie używasz profili, a chcesz włączyć skaner globalnie
-                // Bundle bEnable = new Bundle();
-                // bEnable.PutString(ExtraScannerInputPlugin, ExtraEnablePlugin);
-                // SendDataWedgeIntentWithExtra(ActionDataWedgeFrom62, bEnable);
-
-                System.Diagnostics.Debug.WriteLine($"DataWedgeService: Sent intent to switch to profile '{DataWedgeProfileName}' or enable plugin.");
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"DataWedgeService: Error enabling scanning - {ex.Message}");
-            }
-#else
-            System.Diagnostics.Debug.WriteLine("DataWedgeService: EnableScanning called on non-Android platform.");
+            CreateProfile();
 #endif
         }
 
-        public void DisableScanning()
+        private void SendDataWedgeIntent(Bundle extras)
         {
 #if ANDROID
-            System.Diagnostics.Debug.WriteLine("DataWedgeService: Attempting to disable scanning.");
-            try
+            var context = Platform.AppContext;
+            if (context != null)
             {
-                // Aby wyłączyć skanowanie, możesz przełączyć się na profil, który ma skaner wyłączony,
-                // lub wysłać komendę wyłączenia pluginu skanera.
-                // Poniżej przykład wyłączenia pluginu:
-                Bundle bDisable = new Bundle();
-                bDisable.PutString(ExtraScannerInputPlugin, ExtraDisablePlugin);
-                SendDataWedgeIntentWithExtra(ActionDataWedgeFrom62, bDisable);
-                System.Diagnostics.Debug.WriteLine("DataWedgeService: Sent intent to disable scanner plugin.");
+                Intent intent = new Intent();
+                intent.SetAction(ActionDatawedge);
+                intent.PutExtras(extras);
+                context.SendBroadcast(intent);
             }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"DataWedgeService: Error disabling scanning - {ex.Message}");
-            }
-#else
-            System.Diagnostics.Debug.WriteLine("DataWedgeService: DisableScanning called on non-Android platform.");
 #endif
         }
 
-#if ANDROID
-        private void SendDataWedgeIntentWithExtra(string action, Bundle extras)
-        {
-            var intent = new Intent();
-            intent.SetAction(action);
-            intent.PutExtras(extras);
-            Application.Context.SendBroadcast(intent);
-        }
-
-        // Ta metoda jest wywoływana przez DWIntentReceiver
-        public static void OnScanReceived(Context context, Intent intent)
-        {
-            string? action = intent.Action;
-            if (action == DWIntentReceiver.IntentActionScan) // Upewnij się, że DWIntentReceiver.IntentActionScan jest poprawnie zdefiniowany
-            {
-                string? data = intent.GetStringExtra(DWIntentReceiver.IntentDataString);
-                string? symbology = intent.GetStringExtra(DWIntentReceiver.IntentSymbology);
-                DateTime scanTime = DateTime.Now;
-
-                if (!string.IsNullOrEmpty(data))
-                {
-                    System.Diagnostics.Debug.WriteLine($"DataWedgeService: Scan Received - Data: {data}, Symbology: {symbology}");
-                    // Wyślij wiadomość przez Messengera
-                    WeakReferenceMessenger.Default.Send(new BarcodeScannedMessage(data, symbology ?? "Unknown", scanTime));
-                }
-                else
-                {
-                    System.Diagnostics.Debug.WriteLine("DataWedgeService: Scan Received but data is null or empty.");
-                }
-            }
-        }
-#endif
-
-        // Przykładowa metoda tworzenia profilu DataWedge (zaawansowane)
-        // Zwykle profil konfiguruje się bezpośrednio w aplikacji DataWedge na urządzeniu.
-        private void CreateDataWedgeProfile()
+        public void CreateProfile()
         {
 #if ANDROID
-            // Ta metoda jest bardziej złożona i wymaga ostrożności.
-            // Zobacz dokumentację Zebra DataWedge dla szczegółów tworzenia profili programowo.
-            // https://techdocs.zebra.com/datawedge/latest/guide/api/creatingprofiles/
-            System.Diagnostics.Debug.WriteLine($"DataWedgeService: Attempting to create profile '{DataWedgeProfileName}'.");
+            System.Diagnostics.Debug.WriteLine($"Attempting to create DataWedge profile: {ProfileName}");
             Bundle profileConfig = new Bundle();
-            profileConfig.PutString("PROFILE_NAME", DataWedgeProfileName);
-            profileConfig.PutString("PROFILE_ENABLED", "true"); // Włącz profil
-            profileConfig.PutString("CONFIG_MODE", "CREATE_IF_NOT_EXIST"); // Utwórz, jeśli nie istnieje
+            profileConfig.PutString("PROFILE_NAME", ProfileName);
+            profileConfig.PutString("PROFILE_ENABLED", "true");
+            profileConfig.PutString("CONFIG_MODE", "CREATE_IF_NOT_EXIST");
 
-            // Konfiguracja aplikacji powiązanych z profilem
             Bundle appConfig = new Bundle();
-            appConfig.PutString("PACKAGE_NAME", Application.Context.PackageName); // Powiąż z tą aplikacją
-            string[] appActivity = { "*" }; // Wszystkie aktywności
-            appConfig.PutStringArray("ACTIVITY_LIST", appActivity);
+            appConfig.PutString("PACKAGE_NAME", AppInfo.PackageName);
+            appConfig.PutStringArray("ACTIVITY_LIST", new string[] { "*" });
             profileConfig.PutParcelableArray("APP_LIST", new Bundle[] { appConfig });
 
-            // Konfiguracja pluginu skanera (Barcode input)
-            Bundle barcodeConfig = new Bundle();
-            barcodeConfig.PutString("PLUGIN_NAME", "BARCODE");
-            barcodeConfig.PutString("RESET_CONFIG", "true"); // Zresetuj do domyślnych, a potem ustaw
-            Bundle barcodeProps = new Bundle();
-            barcodeProps.PutString("scanner_selection", "auto"); // Automatyczny wybór skanera
-            barcodeProps.PutString("scanner_input_enabled", "true"); // Włącz skanowanie
-            barcodeConfig.PutBundle("PARAM_LIST", barcodeProps);
-            profileConfig.PutBundle("PLUGIN_CONFIG", barcodeConfig);
-
-
-            // Konfiguracja pluginu Intent output (aby wysyłać dane do aplikacji)
             Bundle intentConfig = new Bundle();
             intentConfig.PutString("PLUGIN_NAME", "INTENT");
             intentConfig.PutString("RESET_CONFIG", "true");
+
             Bundle intentProps = new Bundle();
             intentProps.PutString("intent_output_enabled", "true");
-            intentProps.PutString("intent_action", DWIntentReceiver.IntentActionScan); // Akcja, na którą nasłuchuje receiver
-            intentProps.PutInt("intent_delivery", 2); // 2 for "Send via startActivity" (lub 0 dla broadcast, 1 dla startService)
+            intentProps.PutString("intent_action", DWIntentReceiver.IntentActionScan);
+            intentProps.PutInt("intent_delivery", 2);
             intentConfig.PutBundle("PARAM_LIST", intentProps);
 
-            // Dodaj konfiguracje pluginów do profilu
-            // Ważne: DataWedge od wersji 6.4 wymaga, aby konfiguracje pluginów były w tablicy.
-            profileConfig.PutParcelableArray("PLUGIN_CONFIG", new Bundle[] { barcodeConfig, intentConfig });
+            Bundle barcodeConfig = new Bundle();
+            barcodeConfig.PutString("PLUGIN_NAME", "BARCODE");
+            barcodeConfig.PutString("RESET_CONFIG", "true");
 
-            SendDataWedgeIntentWithExtra("com.symbol.datawedge.api.ACTION_DATAWEDGE_FROM_6_2", profileConfig); // Starsza akcja, może być potrzebna SetConfig
-            // Dla nowszych wersji (6.3+) użyj SetConfig:
-            // Bundle setConfigBundle = new Bundle();
-            // setConfigBundle.PutBundle("com.symbol.datawedge.api.SET_CONFIG", profileConfig);
-            // SendDataWedgeIntentWithExtra("com.symbol.datawedge.api.ACTION_DATAWEDGE_FROM_6_2", setConfigBundle); // To jest niepoprawne użycie dla SetConfig
-            // Prawidłowe użycie SetConfig:
-            // Intent i = new Intent();
-            // i.SetAction("com.symbol.datawedge.api.ACTION");
-            // i.PutExtra("com.symbol.datawedge.api.SET_CONFIG", profileConfig);
-            // Application.Context.SendBroadcast(i);
+            Bundle barcodeProps = new Bundle();
+            barcodeProps.PutString("scanner_selection", "auto");
+            barcodeProps.PutString("decoder_ean13", "true");
+            barcodeProps.PutString("decoder_code128", "true");
+            barcodeConfig.PutBundle("PARAM_LIST", barcodeProps);
 
+            profileConfig.PutParcelableArray("PLUGIN_CONFIG", new Bundle[] { intentConfig, barcodeConfig });
 
-            System.Diagnostics.Debug.WriteLine($"DataWedgeService: Intent to create profile '{DataWedgeProfileName}' sent.");
+            SendDataWedgeIntent(profileConfig);
+            System.Diagnostics.Debug.WriteLine($"DataWedge profile '{ProfileName}' creation/update intent sent.");
+#endif
+        }
+
+        public void SetDefaultProfile(string profileName)
+        {
+#if ANDROID
+            Bundle extras = new Bundle();
+            extras.PutString(ExtraSetDefaultProfile, profileName);
+            SendDataWedgeIntent(extras);
+            System.Diagnostics.Debug.WriteLine($"DataWedge set default profile intent sent for: {profileName}");
+#endif
+        }
+
+        public void EnableScanner()
+        {
+#if ANDROID
+            Bundle extras = new Bundle();
+            extras.PutString("PROFILE_NAME", ProfileName);
+            Bundle pluginConfig = new Bundle();
+            pluginConfig.PutString("PLUGIN_NAME", ExtraScannerInputPlugin);
+            pluginConfig.PutString("RESET_CONFIG", "false");
+            Bundle paramsBundle = new Bundle();
+            paramsBundle.PutString("scanner_input_enabled", "true");
+            pluginConfig.PutBundle("PARAM_LIST", paramsBundle);
+            extras.PutBundle("PLUGIN_CONFIG", pluginConfig);
+            SendDataWedgeIntent(extras);
+            System.Diagnostics.Debug.WriteLine("DataWedge enable scanner intent sent.");
+#endif
+        }
+
+        public void DisableScanner()
+        {
+#if ANDROID
+            Bundle extras = new Bundle();
+            extras.PutString("PROFILE_NAME", ProfileName);
+            Bundle pluginConfig = new Bundle();
+            pluginConfig.PutString("PLUGIN_NAME", ExtraScannerInputPlugin);
+            pluginConfig.PutString("RESET_CONFIG", "false");
+            Bundle paramsBundle = new Bundle();
+            paramsBundle.PutString("scanner_input_enabled", "false");
+            pluginConfig.PutBundle("PARAM_LIST", paramsBundle);
+            extras.PutBundle("PLUGIN_CONFIG", pluginConfig);
+            SendDataWedgeIntent(extras);
+            System.Diagnostics.Debug.WriteLine("DataWedge disable scanner intent sent.");
+#endif
+        }
+
+        public void StartSoftScan()
+        {
+#if ANDROID
+            Bundle extras = new Bundle();
+            extras.PutString(ExtraSoftScanTrigger, "START_SCANNING");
+            SendDataWedgeIntent(extras);
+            System.Diagnostics.Debug.WriteLine("DataWedge start soft scan intent sent.");
+#endif
+        }
+
+        public void StopSoftScan()
+        {
+#if ANDROID
+            Bundle extras = new Bundle();
+            extras.PutString(ExtraSoftScanTrigger, "STOP_SCANNING");
+            SendDataWedgeIntent(extras);
+            System.Diagnostics.Debug.WriteLine("DataWedge stop soft scan intent sent.");
 #endif
         }
     }

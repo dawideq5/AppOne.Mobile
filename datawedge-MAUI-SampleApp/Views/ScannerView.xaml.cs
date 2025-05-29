@@ -1,29 +1,23 @@
-// Views/ScannerView.xaml.cs
-using AppOne.Mobile.ViewModels;
+// Path: dawideq5/appone.mobile/AppOne.Mobile-364202b6b5699d684b43b2b633ebce2e4ea9dbf7/datawedge-MAUI-SampleApp/Views/ScannerView.xaml.cs
+using datawedge_MAUI_SampleApp.ViewModels;
 
-namespace AppOne.Mobile.Views
+namespace datawedge_MAUI_SampleApp.Views
 {
     public partial class ScannerView : ContentPage
     {
-        private readonly ScannerViewModel _viewModel;
-
         public ScannerView(ScannerViewModel viewModel)
         {
-            InitializeComponent();
+            InitializeComponent(); // Poprawka CS0103: Upewnij siê, ¿e x:Class w ScannerView.xaml to "datawedge_MAUI_SampleApp.Views.ScannerView"
             BindingContext = viewModel;
-            _viewModel = viewModel;
-        }
-
-        protected override void OnAppearing()
-        {
-            base.OnAppearing();
-            _viewModel?.OnAppearing();
         }
 
         protected override void OnDisappearing()
         {
             base.OnDisappearing();
-            _viewModel?.OnDisappearing();
+            if (BindingContext is ScannerViewModel vm)
+            {
+                vm.Cleanup();
+            }
         }
     }
 }

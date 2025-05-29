@@ -1,58 +1,51 @@
-﻿// ViewModels/AppShellViewModel.cs
-using AppOne.Mobile.Interfaces;
-using AppOne.Mobile.Views; // Dla nameof(LoginView)
+﻿// Path: dawideq5/appone.mobile/AppOne.Mobile-364202b6b5699d684b43b2b633ebce2e4ea9dbf7/datawedge-MAUI-SampleApp/ViewModels/AppShellViewModel.cs
+using AppOne.Mobile.ViewModels;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Microsoft.Maui.Controls;
-using System;
+using datawedge_MAUI_SampleApp.Interfaces;
+using datawedge_MAUI_SampleApp.Views; // Potrzebne dla nameof(LoginView)
 using System.Threading.Tasks;
 
-namespace AppOne.Mobile.ViewModels
+namespace datawedge_MAUI_SampleApp.ViewModels
 {
-    public partial class AppShellViewModel : ObservableObject
+    public partial class AppShellViewModel : BaseViewModel
     {
         private readonly IAuthenticationService _authenticationService;
-
-        [ObservableProperty]
-        string loggedInUserDisplayName = string.Empty;
+        private readonly INotificationService _notificationService; // Dodano dla potwierdzenia wylogowania
 
         [ObservableProperty]
         bool isLoggedIn;
 
-        public AppShellViewModel(IAuthenticationService authenticationService)
+        public AppShellViewModel(IAuthenticationService authenticationService, INotificationService notificationService)
         {
             _authenticationService = authenticationService;
-            _authenticationService.AuthenticationStateChanged += OnAuthenticationStateChanged;
-            UpdateAuthenticationState();
+            _notificationService = notificationService; // Przypisanie serwisu
+
+            // Sprawdź stan logowania asynchronicznie przy inicjalizacji
+            Task.Run(async () => await CheckLoginState());
+            // Subskrypcja na zmiany stanu uwierzytelnienia, jeśli AuthenticationService emituje zdarzenia
         }
 
-        private void OnAuthenticationStateChanged(object? sender, EventArgs e)
+        public async Task CheckLoginState()
         {
-            MainThread.BeginInvokeOnMainThread(UpdateAuthenticationState);
-        }
-
-        private void UpdateAuthenticationState()
-        {
-            IsLoggedIn = _authenticationService.IsLoggedIn;
-            LoggedInUserDisplayName = _authenticationService.IsLoggedIn && !string.IsNullOrEmpty(_authenticationService.UserName)
-                ? $"Zalogowano jako: {_authenticationService.UserName}"
-                : string.Empty;
-
-            // Jeśli użytkownik nie jest zalogowany, a nie jest na stronie logowania, przekieruj
-            // Sprawdź, czy Shell.Current i CurrentState są dostępne
-            if (!IsLoggedIn &&
-                Shell.Current != null &&
-                Shell.Current.CurrentState != null &&
-                !Shell.Current.CurrentState.Location.OriginalString.Contains(nameof(LoginView), StringComparison.OrdinalIgnoreCase))
+            IsLoggedIn = await _authenticationService.IsUserAuthenticatedAsync();
+            if (!IsLoggedIn)
             {
-                // Shell.Current.GoToAsync($"//{nameof(LoginView)}"); // Rozważ, czy to jest zawsze pożądane
+                // Jeśli użytkownik nie jest zalogowany przy starcie, przejdź do LoginView
+                // Upewnij się, że to nie powoduje pętli nawigacji lub problemów przy pierwszym uruchomieniu
+                await Shell.Current.GoToAsync($"//{nameof(LoginView)}");
             }
         }
 
         [RelayCommand]
         async Task Logout()
         {
+            bool confirm = await _notificationService.ShowConfirmation("Wyloguj", "Czy na pewno chcesz się wylogować?", "Tak", "Nie");
+            if (!confirm) return;
+
             _authenticationService.Logout();
+            IsLoggedIn = false;
+            // Poprawka CS0104: Użycie nameof(LoginView) powinno być jednoznaczne, jeśli LoginView jest poprawnie zdefiniowane
             await Shell.Current.GoToAsync($"//{nameof(LoginView)}");
         }
     }

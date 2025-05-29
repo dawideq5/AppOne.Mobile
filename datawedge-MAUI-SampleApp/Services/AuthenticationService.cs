@@ -1,57 +1,50 @@
-﻿// Services/AuthenticationService.cs
-using AppOne.Mobile.Interfaces;
-using Microsoft.Maui.Storage;
-using System;
+﻿// Path: dawideq5/appone.mobile/AppOne.Mobile-364202b6b5699d684b43b2b633ebce2e4ea9dbf7/datawedge-MAUI-SampleApp/Services/AuthenticationService.cs
+using datawedge_MAUI_SampleApp.Interfaces;
+using Microsoft.Maui.Storage; // For SecureStorage
 using System.Threading.Tasks;
 
-namespace AppOne.Mobile.Services
+namespace datawedge_MAUI_SampleApp.Services
 {
     public class AuthenticationService : IAuthenticationService
     {
-        private const string AuthKey = "auth_user";
-        private const string LastUserKey = "last_user_login";
+        private const string AuthTokenKey = "AuthToken";
+        private const string UsernameKey = "Username"; // Key to store username
 
-        public bool IsLoggedIn => !string.IsNullOrEmpty(Preferences.Get(AuthKey, string.Empty));
-        public string? UserName => Preferences.Get(AuthKey, string.Empty);
-
-        public event EventHandler? AuthenticationStateChanged;
-
-        public async Task<bool> LoginAsync(string username, string password)
+        public async Task<string?> GetCurrentUserAsync()
         {
-            // TODO: Zastąp to rzeczywistą logiką walidacji (np. wywołanie API)
-            if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
-            {
-                return false;
-            }
-
-            // Symulacja udanego logowania
-            SetUser(username);
-            await SaveLastLoggedInUserAsync(username);
-            return true;
+            return await SecureStorage.GetAsync(UsernameKey);
         }
 
-        public void SetUser(string username)
+        // Corrected: Return type changed to Task<string?> to match potential interface and allow null
+        public async Task<string?> LoginAsync(string username, string password)
         {
-            Preferences.Set(AuthKey, username);
-            AuthenticationStateChanged?.Invoke(this, EventArgs.Empty);
+            // Simulate API call or actual authentication logic
+            // In a real app, you would call your backend API here
+            if (username == "test" && password == "password") // Example credentials
+            {
+                var token = $"dummy-token-for-{username}-{System.DateTime.UtcNow.Ticks}";
+                await SecureStorage.SetAsync(AuthTokenKey, token);
+                await SecureStorage.SetAsync(UsernameKey, username); // Store username
+                return token;
+            }
+            return null; // Return null if login fails
         }
 
         public void Logout()
         {
-            Preferences.Remove(AuthKey);
-            AuthenticationStateChanged?.Invoke(this, EventArgs.Empty);
-            Console.WriteLine("User logged out.");
+            SecureStorage.Remove(AuthTokenKey);
+            SecureStorage.Remove(UsernameKey); // Remove username on logout
         }
 
-        public Task<string?> GetLastLoggedInUserAsync()
+        public async Task<bool> IsUserAuthenticatedAsync()
         {
-            return Task.FromResult(Preferences.Get(LastUserKey, string.Empty));
+            var token = await SecureStorage.GetAsync(AuthTokenKey);
+            return !string.IsNullOrEmpty(token);
         }
 
-        public Task SaveLastLoggedInUserAsync(string username)
+        public async Task<string?> GetAuthTokenAsync()
         {
-            Preferences.Set(LastUserKey, username);
-            return Task.CompletedTask;
+            return await SecureStorage.GetAsync(AuthTokenKey);
         }
     }
 }
